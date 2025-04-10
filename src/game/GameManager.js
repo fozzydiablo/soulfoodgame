@@ -60,17 +60,41 @@ export class GameManager {
         
         // Spawn first wave of enemies
         this.enemyManager.spawnWave(this.gameState.wave);
+        
+        // For tracking the last key pressed (used for shop interaction)
+        this.lastKeyPressed = '';
+        this.setupKeyListeners();
+    }
+    
+    setupKeyListeners() {
+        // Add event listeners for keyboard input
+        window.addEventListener('keydown', (event) => {
+            // Store the last key pressed
+            this.lastKeyPressed = event.key;
+        });
+        
+        window.addEventListener('keyup', (event) => {
+            // Clear the last key pressed if it's the one that was released
+            if (this.lastKeyPressed === event.key) {
+                this.lastKeyPressed = '';
+            }
+        });
     }
     
     update() {
-        // Check for game over or pause state first
+        // Check for game over state first
         if (this.gameState.isGameOver) return;
         
         const delta = this.clock.getDelta();
         
-        // If shop is active, only update shop-related systems
+        // Update hero and shop if shop is active
         if (this.shopManager.isShopActive) {
+            // Allow player movement and camera rotation in shop
+            this.hero.update(delta);
+            
+            // Update shop items
             this.shopManager.update(delta);
+            
             return;
         }
         

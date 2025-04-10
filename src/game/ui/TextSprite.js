@@ -11,7 +11,10 @@ export class TextSprite {
             backgroundColor: 0x000000,
             backgroundOpacity: 0.5,
             size: 1,
-            padding: 10
+            padding: 10,
+            outline: false,
+            outlineColor: 0x000000,
+            outlineWidth: 4
         }, options);
         
         this.text = text;
@@ -44,6 +47,15 @@ export class TextSprite {
         context.font = fontStyle;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
+        
+        // Add outline if enabled
+        if (this.options.outline) {
+            context.strokeStyle = `rgb(${(this.options.outlineColor >> 16) & 255}, ${(this.options.outlineColor >> 8) & 255}, ${this.options.outlineColor & 255})`;
+            context.lineWidth = this.options.outlineWidth;
+            context.strokeText(this.text, canvas.width / 2, canvas.height / 2);
+        }
+        
+        // Fill text
         context.fillStyle = `rgb(${(this.options.color >> 16) & 255}, ${(this.options.color >> 8) & 255}, ${this.options.color & 255})`;
         context.fillText(this.text, canvas.width / 2, canvas.height / 2);
         

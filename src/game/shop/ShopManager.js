@@ -94,15 +94,35 @@ export class ShopManager {
         continueCanvas.width = 512;
         continueCanvas.height = 128;
         
-        continueContext.fillStyle = '#005500';
+        // Create background with gradient
+        const gradient = continueContext.createLinearGradient(0, 0, 0, continueCanvas.height);
+        gradient.addColorStop(0, '#007700');
+        gradient.addColorStop(1, '#005500');
+        continueContext.fillStyle = gradient;
         continueContext.fillRect(0, 0, continueCanvas.width, continueCanvas.height);
         
+        // Add glowing border
         continueContext.strokeStyle = '#00ff00';
-        continueContext.lineWidth = 4;
-        continueContext.strokeRect(4, 4, continueCanvas.width - 8, continueCanvas.height - 8);
+        continueContext.lineWidth = 6;
+        continueContext.shadowColor = '#00ff00';
+        continueContext.shadowBlur = 15;
+        continueContext.shadowOffsetX = 0;
+        continueContext.shadowOffsetY = 0;
+        continueContext.strokeRect(6, 6, continueCanvas.width - 12, continueCanvas.height - 12);
         
+        // Add inner border for depth
+        continueContext.strokeStyle = '#ffffff';
+        continueContext.lineWidth = 2;
+        continueContext.shadowBlur = 0;
+        continueContext.strokeRect(12, 12, continueCanvas.width - 24, continueCanvas.height - 24);
+        
+        // Add text with shadow for better visibility
         continueContext.font = 'bold 48px Arial';
         continueContext.fillStyle = '#ffffff';
+        continueContext.shadowColor = '#000000';
+        continueContext.shadowBlur = 8;
+        continueContext.shadowOffsetX = 2;
+        continueContext.shadowOffsetY = 2;
         continueContext.textAlign = 'center';
         continueContext.textBaseline = 'middle';
         continueContext.fillText('CONTINUE TO NEXT WAVE', continueCanvas.width / 2, continueCanvas.height / 2);
@@ -110,10 +130,26 @@ export class ShopManager {
         const continueTexture = new THREE.CanvasTexture(continueCanvas);
         const continueMaterial = new THREE.SpriteMaterial({ map: continueTexture });
         this.continueButton = new THREE.Sprite(continueMaterial);
-        this.continueButton.position.set(0, 1, -9);
+        
+        // Position it at the top for better visibility
+        this.continueButton.position.set(0, 1, -5); // Move closer to the camera to be more visible
         this.continueButton.scale.set(4, 1, 1);
         this.continueButton.visible = false;
         this.scene.add(this.continueButton);
+        
+        // Create animation for the continue button to make it more noticeable
+        this.continueButtonAnimation = () => {
+            if (this.continueButton && this.continueButton.visible) {
+                // Make it pulse gently
+                const scale = 1 + Math.sin(Date.now() * 0.003) * 0.05;
+                this.continueButton.scale.set(4 * scale, 1 * scale, 1);
+                
+                // Request next frame if button is still visible
+                if (this.isShopActive) {
+                    requestAnimationFrame(this.continueButtonAnimation);
+                }
+            }
+        };
     }
     
     openShop() {
@@ -121,8 +157,8 @@ export class ShopManager {
         
         this.isShopActive = true;
         
-        // Pause the game when opening shop
-        this.gameManager.pauseGame();
+        // We no longer pause the game completely, just slow down time
+        // this.gameManager.pauseGame();
         
         // Show shop UI elements
         this.background.visible = true;
@@ -130,12 +166,15 @@ export class ShopManager {
         this.closeButton.visible = true;
         this.continueButton.visible = true;
         
+        // Start the continue button animation
+        requestAnimationFrame(this.continueButtonAnimation);
+        
         // Create shop items
         this.createShopItems();
         
         // Show message to player
         if (this.gameManager.ui) {
-            this.gameManager.ui.showNotification("Welcome to the shop! Spend your points on upgrades.");
+            this.gameManager.ui.showNotification("Welcome to the shop! Move around to browse upgrades.");
         }
         
         // Play shop sound
@@ -147,8 +186,8 @@ export class ShopManager {
         
         this.isShopActive = false;
         
-        // Resume the game when closing shop
-        this.gameManager.resumeGame();
+        // Resume normal game speed
+        // this.gameManager.resumeGame();
         
         // Hide shop UI elements
         this.background.visible = false;
@@ -170,15 +209,20 @@ export class ShopManager {
         // Clean up existing items first
         this.cleanupItems();
         
-        // Item positions - a 3x2 grid
-        const positions = [
-            new THREE.Vector3(-6, 4, -8),
-            new THREE.Vector3(0, 4, -8),
-            new THREE.Vector3(6, 4, -8),
-            new THREE.Vector3(-6, 1.5, -8),
-            new THREE.Vector3(0, 1.5, -8),
-            new THREE.Vector3(6, 1.5, -8)
-        ];
+        // Calculate positions in a circle
+        const numItems = 6;
+        const radius = 6; // Distance from center
+        const centerY = 1.5; // Height of the items
+        
+        const positions = [];
+        for (let i = 0; i < numItems; i++) {
+            // Calculate position on the circle
+            const angle = (i / numItems) * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            positions.push(new THREE.Vector3(x, centerY, z));
+        }
         
         // Item types
         const itemTypes = [
@@ -187,7 +231,7 @@ export class ShopManager {
             'ammo',
             'turretAmmo',
             'turretCooldown',
-            'damage'  // Changed duplicate health to damage
+            'damage'
         ];
         
         // Item prices - increase with wave number
