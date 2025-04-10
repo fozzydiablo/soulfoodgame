@@ -16,6 +16,17 @@ export class GameManager {
         this.camera = camera;
         this.clock = new THREE.Clock();
         
+        // Define area centers
+        this.areaACenterPosition = new THREE.Vector3(0, 1, 0); // Center of area A (combat area)
+        this.areaBCenterPosition = new THREE.Vector3(40, 1, 0); // Center of area B (shop area)
+        
+        // Track if we're between waves
+        this.isBetweenWaves = false;
+        
+        // Track mouse position for button interactions
+        this.mouseX = 0;
+        this.mouseY = 0;
+        
         // Initialize game systems in the correct order
         this.resourceManager = new ResourceManager(scene);
         this.projectileManager = new ProjectileManager(scene);
@@ -31,22 +42,19 @@ export class GameManager {
         // Initialize turret manager after UI
         this.turretManager = new TurretManager(scene, this);
         
-        // Initialize shop manager
-        this.shopManager = new ShopManager(scene, this);
-        
         // Game state
         this.gameState = {
-            wave: 1,
+            wave: 0,
+            enemiesRemaining: 0,
+            health: 10,
+            maxHealth: 10,
             score: 0,
             resources: {
-                ammo: 10, // Start with 10 ammo
-                gold: 100  // Start with 100 gold
+                gold: 500,  // Starting gold
+                ammo: 100   // Starting ammo
             },
-            health: 10,   // Player has 10 health
-            maxHealth: 10,
-            isGameOver: false,
-            isPaused: false,
-            isBetweenWaves: false // New flag to track between-waves state
+            hasRevivalToken: false,
+            isAlive: true
         };
         
         // Initialize inventory system
@@ -54,6 +62,9 @@ export class GameManager {
         
         // Initialize item manager
         this.itemManager = new ItemManager(scene, this);
+        
+        // Initialize shop manager (must be after UI and other systems)
+        this.shopManager = new ShopManager(scene, this);
         
         // Update UI with initial state
         this.ui.updateAmmo(this.gameState.resources.ammo);
@@ -73,23 +84,61 @@ export class GameManager {
         this.update = this.update.bind(this);
         
         // Spawn first wave of enemies
-        this.enemyManager.spawnWave(this.gameState.wave);
+        this.enemyManager.spawnWave(1);
         
-        // For tracking the last key pressed (used for shop interaction)
+        // For tracking the last key pressed
         this.lastKeyPressed = '';
         this.setupKeyListeners();
+        this.setupMouseListeners();
+        
+        // Apply any stats from wearable items in inventory
+        if (this.inventory && typeof this.inventory.updateWearableItemStats === 'function') {
+            this.inventory.updateWearableItemStats();
+        }
     }
     
     setupKeyListeners() {
-        // Add event listeners for keyboard input
-        window.addEventListener('keydown', (event) => {
-            // Store the last key pressed
+        document.addEventListener('keydown', (event) => {
             this.lastKeyPressed = event.key;
+            
+            // Process menu keys
+            switch (event.key) {
+                case 'p':
+                case 'P':
+                    this.togglePause();
+                    break;
+                case 't':
+                case 'T':
+                    // Deploy turret when the T key is pressed (if ability is in inventory)
+                    this.tryDeployTurret();
+                    break;
+            }
         });
         
         window.addEventListener('keyup', (event) => {
             // Clear the last key pressed if it's the one that was released
             if (this.lastKeyPressed === event.key) {
+                this.lastKeyPressed = '';
+            }
+        });
+    }
+    
+    setupMouseListeners() {
+        // Track mouse position
+        window.addEventListener('mousemove', (event) => {
+            this.mouseX = event.clientX;
+            this.mouseY = event.clientY;
+        });
+        
+        // Track mouse clicks
+        window.addEventListener('mousedown', (event) => {
+            if (event.button === 0) { // Left click
+                this.lastKeyPressed = 'mouse1';
+            }
+        });
+        
+        window.addEventListener('mouseup', (event) => {
+            if (event.button === 0 && this.lastKeyPressed === 'mouse1') {
                 this.lastKeyPressed = '';
             }
         });
@@ -107,17 +156,15 @@ export class GameManager {
         // Always update hero for movement
         this.hero.update(delta);
         
-        // If player is near the shop, update shop items but don't exit early
-        if (this.hero.mesh.position.distanceTo(this.shopManager.shopCenterPosition) < 20) {
-            this.shopManager.update(delta);
-        }
-        
         // Always update game systems
         this.enemyManager.update(delta, this.hero.mesh.position);
         this.resourceManager.update(delta);
         this.buildingManager.update(delta);
         this.projectileManager.update(delta);
         this.turretManager.update(delta);
+        
+        // Update shop manager
+        this.shopManager.update(delta);
         
         // Update item manager
         this.itemManager.update(delta);
@@ -128,8 +175,8 @@ export class GameManager {
         // Check for collisions and interactions
         this.checkCollisions();
         
-        // Only check for wave completion when not between waves (waiting in shop)
-        if (!this.gameState.isBetweenWaves && this.enemyManager.isWaveComplete()) {
+        // Check for wave completion - only if not already between waves
+        if (!this.isBetweenWaves && this.enemyManager.isWaveComplete()) {
             this.waveComplete();
         }
     }
@@ -155,7 +202,9 @@ export class GameManager {
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     const enemy = enemies[j];
                     if (projectile.checkCollision(enemy)) {
-                        enemy.takeDamage(1); // Player projectiles do 1 damage
+                        // Use hero's damage stat instead of hardcoded value
+                        const heroDamage = this.hero.stats.damage;
+                        enemy.takeDamage(heroDamage);
                         
                         // Award score if enemy dies
                         if (enemy.stats.health <= 0) {
@@ -201,19 +250,14 @@ export class GameManager {
         // Update UI
         this.ui.updateScore(this.gameState.score);
         
-        // Award ammo for killing enemies (lower chance now that we have gold and items)
-        if (Math.random() < 0.15 || enemy.enemyType === 'boss') {
-            // 15% chance to get ammo, guaranteed for bosses
-            const ammoAmount = enemy.enemyType === 'boss' ? 15 : 3;
-            this.addAmmo(ammoAmount);
-        }
+        // Ammo drops have been removed - unlimited ammo enabled
     }
     
     waveComplete() {
         console.log(`Wave ${this.gameState.wave} completed!`);
         
-        // Set between-waves flag to true
-        this.gameState.isBetweenWaves = true;
+        // Set the between waves flag
+        this.isBetweenWaves = true;
         
         // Increment wave count
         this.gameState.wave++;
@@ -221,22 +265,33 @@ export class GameManager {
         // Update wave display
         this.ui.updateWave(this.gameState.wave);
         
-        // Transport player to shop area (Area B)
-        this.hero.mesh.position.set(
-            this.shopManager.shopCenterPosition.x,
-            this.hero.mesh.position.y,
-            this.shopManager.shopCenterPosition.z
-        );
+        // Award gold for completing a wave
+        const goldReward = 50 * this.gameState.wave;
+        this.addGold(goldReward);
         
-        // Refresh shop items
-        this.shopManager.refreshShopItems();
+        // Transport player to center of area B (shop area)
+        this.hero.mesh.position.copy(this.areaBCenterPosition);
         
-        // Show notification to player
-        this.ui.showNotification("Wave completed! Visit the shop and click 'Start Next Wave' when ready.");
+        // Show wave completed notification
+        this.ui.showWaveCompletedNotification();
+        
+        // Show the next wave button hint after a short delay
+        setTimeout(() => {
+            this.ui.showNextWaveButtonHint();
+        }, 5000);
     }
     
     startNextWave() {
-        // Start the next wave after shop visit
+        // Clear the between waves flag
+        this.isBetweenWaves = false;
+        
+        // Remove the next wave button hint
+        this.ui.removeNextWaveButtonHint();
+        
+        // Transport player back to area A (combat area)
+        this.hero.mesh.position.copy(this.areaACenterPosition);
+        
+        // Start the next wave
         this.enemyManager.spawnWave(this.gameState.wave);
         
         // Show wave notification
@@ -251,12 +306,8 @@ export class GameManager {
     }
     
     useAmmo() {
-        if (this.gameState.resources.ammo > 0) {
-            this.gameState.resources.ammo--;
-            this.ui.updateAmmo(this.gameState.resources.ammo);
-            return true;
-        }
-        return false;
+        // Unlimited ammo - always return true without decreasing ammo
+        return true;
     }
     
     takeDamage(amount) {
@@ -289,9 +340,8 @@ export class GameManager {
     }
     
     addResources(type, amount) {
-        if (type === 'ammo') {
-            this.addAmmo(amount);
-        }
+        // Ammo is now unlimited, so we don't need to add it
+        // No other resource types currently defined
     }
     
     gameOver() {
@@ -302,11 +352,7 @@ export class GameManager {
     
     // Add gold method - disabled since gold rewards are removed
     addGold(amount) {
-        // Gold rewards have been disabled
-        console.log("Gold rewards are disabled");
-        return;
-        
-        /*
+        // Enable gold rewards
         if (!this.gameState.resources.gold) {
             this.gameState.resources.gold = 0;
         }
@@ -316,7 +362,26 @@ export class GameManager {
         // Update UI
         if (this.ui) {
             this.ui.updateGold(this.gameState.resources.gold);
+            this.ui.showNotification(`+${amount} Gold`, 1500);
         }
-        */
+    }
+    
+    // Add a method to try deploying a turret
+    tryDeployTurret() {
+        // Skip if not initialized or game is paused
+        if (!this.inventory || this.gameState.isPaused) return;
+        
+        // Look for the deploy_turret ability in the ability slots
+        const abilityIndex = this.inventory.abilitySlots.findIndex(item => 
+            item !== null && item.id === 'deploy_turret'
+        );
+        
+        if (abilityIndex >= 0) {
+            // Select and use the turret ability
+            this.inventory.selectSlot(abilityIndex, 'ability');
+        } else {
+            // Notify player they don't have the ability
+            this.ui.showNotification("You don't have the Deploy Turret ability!", 2000);
+        }
     }
 } 

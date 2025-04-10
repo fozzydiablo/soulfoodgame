@@ -223,9 +223,19 @@ export class Hero {
     }
     
     onMouseDown(event) {
-        // Only respond to left mouse button (0)
+        // Only handle left click
         if (event.button === 0) {
-            this.shoot();
+            // Just shoot once immediately instead of setting a flag
+            if (this.canShoot() && !this.gameManager.isBetweenWaves) {
+                this.shoot();
+            }
+        }
+    }
+    
+    onMouseUp(event) {
+        // Clear the shooting flag (no longer needed but kept for safety)
+        if (event.button === 0) {
+            this.shooting = false;
         }
     }
     
@@ -300,6 +310,8 @@ export class Hero {
         this.updateJumping(delta);
         this.updateAnimation(delta);
         this.updateStats(delta);
+        
+        // Remove continuous shooting - we now shoot only once on mouse down
         
         // Check for resource collection automatically
         this.checkResourceCollection();

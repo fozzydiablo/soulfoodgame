@@ -183,6 +183,21 @@ export class Enemy {
         const buildingManager = this.gameManager.buildingManager;
         const enemyRadius = this.stats.hitboxSize || 0.8; // Use hitboxSize or default if not set
         
+        // Track if the enemy has been stuck for too long
+        if (!this.stuckTimer) {
+            this.stuckTimer = 0;
+            this.lastPosition = currentPosition.clone();
+            this.stuckThreshold = 2.0; // Seconds before considering an enemy "stuck"
+        }
+        
+        // Check if we're stuck by seeing if we've moved significantly in the last check
+        if (this.lastPosition.distanceTo(currentPosition) < 0.1) {
+            this.stuckTimer += delta;
+        } else {
+            this.stuckTimer = 0;
+            this.lastPosition = currentPosition.clone();
+        }
+        
         if (buildingManager && buildingManager.checkWallCollision(newPosition, enemyRadius)) {
             // Try to slide along the wall by trying X and Z movement separately
             const xOnlyMove = currentPosition.clone();
@@ -201,14 +216,37 @@ export class Enemy {
                 // Z movement is valid
                 this.mesh.position.z = zOnlyMove.z;
             }
-            // If both directions cause collisions, pick a new random target offset
-            else {
-                // Generate a new random offset for future attempts
-                this.positionOffset = new THREE.Vector3(
-                    (Math.random() - 0.5) * 5,
+            // If both directions cause collisions and we've been stuck for a while, try a more drastic approach
+            else if (this.stuckTimer > this.stuckThreshold) {
+                // Generate a completely new random offset to try to find a new path
+                const randomAngle = Math.random() * Math.PI * 2;
+                const escapeDirection = new THREE.Vector3(
+                    Math.cos(randomAngle),
                     0,
-                    (Math.random() - 0.5) * 5
+                    Math.sin(randomAngle)
                 );
+                
+                // Try to move in this escape direction
+                const escapePosition = currentPosition.clone().add(
+                    escapeDirection.multiplyScalar(this.stats.speed * delta * 2)
+                );
+                
+                if (!buildingManager.checkWallCollision(escapePosition, enemyRadius)) {
+                    // Move to escape position
+                    this.mesh.position.copy(escapePosition);
+                    console.log("Enemy unstuck with random direction");
+                } else {
+                    // If still stuck, generate a new offset for future attempts
+                    this.positionOffset = new THREE.Vector3(
+                        (Math.random() - 0.5) * 10, // Use a larger range to find more varied paths
+                        0,
+                        (Math.random() - 0.5) * 10
+                    );
+                    console.log("Enemy stuck - generated new path offset");
+                }
+                
+                // Reset stuck timer
+                this.stuckTimer = 0;
             }
         } else {
             // No collision, apply the full movement

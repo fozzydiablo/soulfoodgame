@@ -5,21 +5,14 @@ export class ResourceManager {
         this.scene = scene;
         this.resources = [];
         this.resourceTypes = {
-            ammo: {
-                color: 0x00FF00, // Green color for ammo
-                value: 5,        // Each ammo pickup gives 5 bullets
-                respawnTime: 30
-            }
+            // ammo resources have been removed - ammo is now unlimited
         };
         
         this.spawnInitialResources();
     }
     
     spawnInitialResources() {
-        // Spawn ammo nodes
-        for (let i = 0; i < 8; i++) {
-            this.spawnResource('ammo');
-        }
+        // No resources to spawn - ammo is now unlimited
     }
     
     spawnResource(type) {

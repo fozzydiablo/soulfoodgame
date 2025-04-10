@@ -12,34 +12,29 @@ export class TurretManager {
         this.cooldownTime = 20000; // 20 seconds in milliseconds
         this.isOnCooldown = false;
         
-        // Bind methods
-        this.handleKeyDown = this.handleKeyDown.bind(this);
-        
-        // Add keyboard listener
-        document.addEventListener('keydown', this.handleKeyDown);
+        // Initialize the base turret ammo (this is now an ability from the shop)
+        this.baseTurretAmmo = 30;
     }
     
-    handleKeyDown(event) {
-        // Check if player pressed the "1" key
-        if (event.key === '1') {
-            this.attemptToDeployTurret();
-        }
-    }
-    
-    attemptToDeployTurret() {
+    deployTurret(x, z) {
         const now = Date.now();
         
         // Check if on cooldown
         if (now - this.lastTurretTime < this.cooldownTime) {
-            console.log("Turret ability on cooldown!");
+            this.gameManager.ui.showNotification(`Turret on cooldown! ${Math.ceil((this.cooldownTime - (now - this.lastTurretTime)) / 1000)}s remaining`, 2000);
             return false;
         }
         
-        // Deploy turret at player position
-        const playerPosition = this.gameManager.hero.mesh.position.clone();
+        // Create position from x and z coordinates
+        const position = new THREE.Vector3(x, 0, z);
         
         // Create a new turret
-        const turret = new Turret(this.scene, playerPosition, this.gameManager);
+        const turret = new Turret(this.scene, position, this.gameManager);
+        
+        // Set turret ammo
+        turret.stats.ammo = this.baseTurretAmmo;
+        
+        // Add to active turrets list
         this.turrets.push(turret);
         
         // Set cooldown

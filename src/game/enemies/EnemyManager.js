@@ -75,29 +75,26 @@ export class EnemyManager {
     }
     
     spawnEnemyOfType(type) {
-        // Random position around the map, but not too close to player
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 15 + Math.random() * 5;
-        const x = Math.cos(angle) * radius;
-        const z = Math.sin(angle) * radius;
+        // Get a valid spawn position that doesn't collide with walls
+        const spawnPosition = this.getValidSpawnPosition();
         
         let enemy;
         
         switch (type) {
             case 'fast':
-                enemy = new FastEnemy(this.scene, x, z, this.gameManager);
+                enemy = new FastEnemy(this.scene, spawnPosition.x, spawnPosition.z, this.gameManager);
                 break;
             case 'tank':
-                enemy = new TankEnemy(this.scene, x, z, this.gameManager);
+                enemy = new TankEnemy(this.scene, spawnPosition.x, spawnPosition.z, this.gameManager);
                 break;
             case 'ranged':
-                enemy = new RangedEnemy(this.scene, x, z, this.gameManager);
+                enemy = new RangedEnemy(this.scene, spawnPosition.x, spawnPosition.z, this.gameManager);
                 break;
             case 'boss':
-                enemy = new BossEnemy(this.scene, x, z, this.gameManager);
+                enemy = new BossEnemy(this.scene, spawnPosition.x, spawnPosition.z, this.gameManager);
                 break;
             default:
-                enemy = new Enemy(this.scene, x, z, this.gameManager);
+                enemy = new Enemy(this.scene, spawnPosition.x, spawnPosition.z, this.gameManager);
                 break;
         }
         
@@ -105,6 +102,48 @@ export class EnemyManager {
         this.applyDifficultyToEnemy(enemy);
         
         this.enemies.push(enemy);
+    }
+    
+    getValidSpawnPosition() {
+        // Attempt to find a valid spawn position
+        const maxAttempts = 50;
+        let attempt = 0;
+        
+        while (attempt < maxAttempts) {
+            // Random angle around the map
+            const angle = Math.random() * Math.PI * 2;
+            
+            // Random distance from center (15-18 units to keep away from walls at 20 units)
+            const radius = 15 + Math.random() * 3;
+            
+            // Calculate position
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            // Create a position vector to test
+            const position = new THREE.Vector3(x, 0, z);
+            
+            // Check if position is valid (not colliding with walls)
+            if (this.gameManager && this.gameManager.buildingManager) {
+                // Use a slightly larger radius for spawning to ensure enemies don't appear too close to walls
+                const spawnRadius = 1.5;
+                
+                if (!this.gameManager.buildingManager.checkWallCollision(position, spawnRadius)) {
+                    // Valid position found
+                    console.log(`Spawned enemy at valid position: ${x.toFixed(2)}, ${z.toFixed(2)}`);
+                    return position;
+                }
+            } else {
+                // If no building manager, just return the position
+                return position;
+            }
+            
+            attempt++;
+        }
+        
+        // If we couldn't find a valid position after max attempts, fall back to a safe default
+        console.warn("Could not find valid spawn position, using fallback position");
+        return new THREE.Vector3(0, 0, -15); // Spawn near the center, but away from typical player position
     }
     
     applyDifficultyToEnemy(enemy) {
@@ -147,6 +186,27 @@ export class EnemyManager {
             // Award score for killing enemy
             if (this.gameManager) {
                 this.gameManager.awardScoreForEnemy(enemy);
+                
+                // Award gold directly based on enemy type
+                let goldAmount = 5; // Base gold for basic enemy
+                
+                switch (enemyType) {
+                    case 'fast':
+                        goldAmount = 8;
+                        break;
+                    case 'tank':
+                        goldAmount = 12;
+                        break;
+                    case 'ranged':
+                        goldAmount = 10;
+                        break;
+                    case 'boss':
+                        goldAmount = 50;
+                        break;
+                }
+                
+                // Add gold directly to player
+                this.gameManager.addGold(goldAmount);
             }
             
             // Let the itemManager handle drops (gold rewards have been removed)

@@ -95,12 +95,12 @@ export const itemDatabase = [
     },
     {
         id: 'ammo_pouch',
-        name: 'Ammo Pouch',
-        description: 'A small pouch that holds extra ammunition.',
+        name: 'Lucky Charm',
+        description: 'A charm that brings good fortune in battle.',
         type: 'accessory',
         rarity: 'common',
         value: 25,
-        stats: { ammo: 10 }
+        stats: { damage: 1 }
     },
     {
         id: 'reinforced_vest',

@@ -81,7 +81,7 @@ export class UI {
             <div>SPACE - Jump</div>
             <div>LEFT CLICK - Shoot</div>
             <div>1 - Deploy Turret</div>
-            <div>E - Purchase (in shop)</div>
+            <div>E - Interact with Shop</div>
             <div>Walk near ammo crates to collect them</div>
         `;
         
@@ -203,26 +203,16 @@ export class UI {
     
     updateAmmo(ammo) {
         this.ammoDisplay.innerHTML = `
-            Ammo: ${ammo}
+            Ammo: ∞
             <div style="margin-top: 3px;">
-                ${this.generateAmmoIcons(ammo)}
+                <span style="font-size: 16px;">∞</span>
             </div>
         `;
     }
     
     generateAmmoIcons(ammo) {
-        let icons = '';
-        const maxIcons = 20; // Don't show too many icons
-        
-        for (let i = 0; i < Math.min(ammo, maxIcons); i++) {
-            icons += '<span style="display: inline-block; width: 7px; height: 14px; background-color: #00FF00; margin-right: 2px;"></span>';
-        }
-        
-        if (ammo > maxIcons) {
-            icons += ` +${ammo - maxIcons}`;
-        }
-        
-        return icons;
+        // No longer used with unlimited ammo
+        return '';
     }
     
     updateWave(wave) {
@@ -290,31 +280,28 @@ export class UI {
         }, 2000);
     }
     
-    showShopNotification() {
+    showWaveCompletedNotification() {
         const notification = document.createElement('div');
         notification.style.position = 'absolute';
         notification.style.top = '50%';
         notification.style.left = '50%';
         notification.style.transform = 'translate(-50%, -50%)';
-        notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        notification.style.color = '#00AAFF';
+        notification.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        notification.style.color = '#FFFF00'; // Yellow
         notification.style.fontFamily = 'Arial, sans-serif';
-        notification.style.fontSize = '36px';
-        notification.style.padding = '20px';
-        notification.style.borderRadius = '10px';
+        notification.style.fontSize = '40px';
+        notification.style.padding = '30px';
+        notification.style.borderRadius = '15px';
         notification.style.textAlign = 'center';
         notification.style.zIndex = '100';
         notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.5s';
+        notification.style.transition = 'opacity 0.8s';
+        notification.style.boxShadow = '0 0 30px rgba(255, 255, 0, 0.5)';
         
         notification.innerHTML = `
-            <div>Welcome to the Shop!</div>
-            <div style="font-size: 20px; margin-top: 10px; color: white;">
-                Approach items and press <span style="color: #FFCC00;">E</span> to purchase upgrades
-            </div>
-            <div style="font-size: 18px; margin-top: 10px; color: #aaaaaa;">
-                Exit through the green portal when finished
-            </div>
+            <div style="font-size: 48px; margin-bottom: 15px;">Wave Completed!</div>
+            <div style="font-size: 28px; color: #DDDDDD;">You've been transported to the shop area</div>
+            <div style="font-size: 24px; color: #AAAAAA; margin-top: 20px;">Find the glowing blue text on the ground to start the next wave</div>
         `;
         
         document.body.appendChild(notification);
@@ -329,43 +316,64 @@ export class UI {
             notification.style.opacity = '0';
             setTimeout(() => {
                 document.body.removeChild(notification);
-            }, 500);
+            }, 800);
         }, 4000);
     }
     
-    showPurchaseNotification(itemName) {
-        const notification = document.createElement('div');
-        notification.style.position = 'absolute';
-        notification.style.top = '30%';
-        notification.style.left = '50%';
-        notification.style.transform = 'translate(-50%, -50%)';
-        notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        notification.style.color = '#FFCC00';
-        notification.style.fontFamily = 'Arial, sans-serif';
-        notification.style.fontSize = '24px';
-        notification.style.padding = '15px';
-        notification.style.borderRadius = '10px';
-        notification.style.textAlign = 'center';
-        notification.style.zIndex = '100';
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.5s';
+    showNextWaveButtonHint() {
+        // Check if hint already exists
+        if (document.getElementById('next-wave-hint')) {
+            return;
+        }
         
-        notification.innerHTML = `Purchased: ${itemName}`;
+        const hint = document.createElement('div');
+        hint.id = 'next-wave-hint';
+        hint.style.position = 'fixed';
+        hint.style.bottom = '80px';
+        hint.style.right = '20px';
+        hint.style.backgroundColor = 'rgba(0, 0, 255, 0.7)';
+        hint.style.color = 'white';
+        hint.style.padding = '10px 15px';
+        hint.style.borderRadius = '5px';
+        hint.style.fontSize = '18px';
+        hint.style.fontFamily = 'Arial, sans-serif';
+        hint.style.boxShadow = '0 0 10px rgba(0, 0, 255, 0.5)';
+        hint.style.zIndex = '100';
+        hint.style.animation = 'pulse 2s infinite';
         
-        document.body.appendChild(notification);
+        // Add pulsing animation
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.05); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
         
-        // Fade in
-        setTimeout(() => {
-            notification.style.opacity = '1';
-        }, 10);
+        hint.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 24px;">⬇️</div>
+                <div>Walk over the "START NEXT WAVE" text in area B</div>
+            </div>
+        `;
         
-        // Fade out and remove
-        setTimeout(() => {
-            notification.style.opacity = '0';
+        document.body.appendChild(hint);
+    }
+    
+    removeNextWaveButtonHint() {
+        const hint = document.getElementById('next-wave-hint');
+        if (hint) {
+            hint.style.opacity = '0';
+            hint.style.transition = 'opacity 0.3s';
+            
             setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 500);
-        }, 2000);
+                if (hint.parentNode) {
+                    document.body.removeChild(hint);
+                }
+            }, 300);
+        }
     }
     
     updateScore(score) {
@@ -399,9 +407,21 @@ export class UI {
             notification.style.textShadow = '0 0 5px #996515'; // Gold shadow
             notification.style.borderLeft = '4px solid #FFD700';
             notification.style.borderRight = '4px solid #FFD700';
+            
+            // Add a gold coin icon if it's a gold reward notification
+            if (message.includes('+')) {
+                const goldAmount = message.split(' ')[0]; // Get the "+X" part
+                message = `<div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <div style="background-color: #FFD700; width: 15px; height: 15px; border-radius: 50%;"></div>
+                    ${goldAmount} Gold
+                </div>`;
+                notification.innerHTML = message;
+            } else {
+                notification.textContent = message;
+            }
+        } else {
+            notification.textContent = message;
         }
-        
-        notification.textContent = message;
         
         // Add to document
         document.body.appendChild(notification);
