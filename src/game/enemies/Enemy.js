@@ -278,16 +278,20 @@ export class Enemy {
     
     die() {
         this.isDead = true;
+        console.log("Enemy died:", this.enemyType);
         
         // Add death animation
         this.playDeathAnimation();
         
-        // Notify EnemyManager about death for item drops and score
+        // Notify EnemyManager about death for item drops, gold, and score
         if (this.gameManager && this.gameManager.enemyManager) {
+            console.log("Calling handleEnemyDeath...");
             this.gameManager.enemyManager.handleEnemyDeath(this);
             
-            // Award score for killing enemy
-            this.gameManager.awardScoreForEnemy(this);
+            // Award score is now called inside handleEnemyDeath
+            // No need to call it separately to avoid duplicate processing
+        } else {
+            console.error("No gameManager or enemyManager found!");
         }
         
         // No need to remove from scene here as EnemyManager will handle that

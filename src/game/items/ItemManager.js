@@ -55,16 +55,15 @@ export class ItemManager {
     }
     
     spawnItemDrop(enemy) {
-        if (!enemy || !enemy.mesh) return;
+        if (!enemy || !enemy.mesh) {
+            console.error("Invalid enemy passed to spawnItemDrop");
+            return;
+        }
         
+        console.log("Spawning item drop for enemy:", enemy.enemyType);
         const position = enemy.mesh.position.clone();
         
-        // Directly award gold to the player instead of dropping it
-        const goldAmount = this.calculateGoldDrop(enemy);
-        this.gameManager.addGold(goldAmount);
-        
-        // Show gold notification
-        this.gameManager.ui.showNotification(`+${goldAmount} Gold`, 1000);
+        // Gold rewards have been removed
         
         // Chance to drop an item based on enemy type
         const dropChance = this.getDropChance(enemy);
@@ -93,52 +92,6 @@ export class ItemManager {
                 this.spawnItem(itemPosition, item.id);
             }
         }
-    }
-    
-    spawnGold(position, amount) {
-        // Create a gold pile item
-        const goldData = {
-            id: 'gold_pile',
-            name: `${amount} Gold`,
-            description: `${amount} gold pieces that can be used to purchase items.`,
-            type: 'gold',
-            rarity: 'common',
-            value: amount,
-            consumable: true,
-            icon: 'gold_pile'
-        };
-        
-        const goldItem = new Item(this.scene, position, goldData, this.gameManager);
-        this.items.push(goldItem);
-        return goldItem;
-    }
-    
-    calculateGoldDrop(enemy) {
-        // Base gold value by enemy type
-        let baseGold = 5;
-        
-        switch (enemy.enemyType) {
-            case 'fast':
-                baseGold = 8;
-                break;
-            case 'tank': 
-                baseGold = 12;
-                break;
-            case 'ranged':
-                baseGold = 10;
-                break;
-            case 'boss':
-                baseGold = 50;
-                break;
-        }
-        
-        // Add random variance (+/- 20%)
-        const variance = baseGold * 0.4 * (Math.random() - 0.5);
-        
-        // Scale with wave number
-        const waveMultiplier = Math.max(1, this.gameManager.gameState.wave * 0.2);
-        
-        return Math.floor((baseGold + variance) * waveMultiplier);
     }
     
     getDropChance(enemy) {

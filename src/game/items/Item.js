@@ -115,16 +115,7 @@ export class Item {
             this.gameManager.inventory.addItem(this);
         }
         
-        // Add gold value
-        if (this.gameManager.gameState && this.gameManager.gameState.resources) {
-            this.gameManager.gameState.resources.gold = 
-                (this.gameManager.gameState.resources.gold || 0) + this.value;
-                
-            // Update UI if available
-            if (this.gameManager.ui) {
-                this.gameManager.ui.updateGold(this.gameManager.gameState.resources.gold);
-            }
-        }
+        // Gold handling has been removed
         
         // Play sound
         // if (this.gameManager.soundManager) {

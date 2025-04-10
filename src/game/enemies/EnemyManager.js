@@ -138,8 +138,13 @@ export class EnemyManager {
             // Remove from enemies array
             this.enemies.splice(index, 1);
             
-            // Let the itemManager handle drops and gold rewards
-            if (this.gameManager.itemManager) {
+            // Award score for killing enemy
+            if (this.gameManager) {
+                this.gameManager.awardScoreForEnemy(enemy);
+            }
+            
+            // Let the itemManager handle drops (gold rewards have been removed)
+            if (this.gameManager && this.gameManager.itemManager) {
                 this.gameManager.itemManager.spawnItemDrop(enemy);
             }
             

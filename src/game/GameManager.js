@@ -293,8 +293,13 @@ export class GameManager {
         console.log('Game Over!');
     }
     
-    // Add gold method
+    // Add gold method - disabled since gold rewards are removed
     addGold(amount) {
+        // Gold rewards have been disabled
+        console.log("Gold rewards are disabled");
+        return;
+        
+        /*
         if (!this.gameState.resources.gold) {
             this.gameState.resources.gold = 0;
         }
@@ -305,5 +310,6 @@ export class GameManager {
         if (this.ui) {
             this.ui.updateGold(this.gameState.resources.gold);
         }
+        */
     }
 } 
