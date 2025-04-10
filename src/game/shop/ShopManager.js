@@ -10,6 +10,9 @@ export class ShopManager {
         this.isShopActive = false;
         this.mouse = new THREE.Vector2();
         
+        // Shop location (now in area B)
+        this.shopCenterPosition = new THREE.Vector3(40, 0, 0); // Position at the center of area B
+        
         // Bind methods
         this.update = this.update.bind(this);
         this.onMouseMove = this.onMouseMove.bind(this);
@@ -34,7 +37,7 @@ export class ShopManager {
         });
         
         this.background = new THREE.Mesh(geometry, material);
-        this.background.position.set(0, 5, -10);
+        this.background.position.set(this.shopCenterPosition.x, 5, this.shopCenterPosition.z - 10);
         this.background.visible = false;
         this.scene.add(this.background);
         
@@ -60,7 +63,7 @@ export class ShopManager {
         const texture = new THREE.CanvasTexture(canvas);
         const titleMaterial = new THREE.SpriteMaterial({ map: texture });
         this.titleSprite = new THREE.Sprite(titleMaterial);
-        this.titleSprite.position.set(0, 8, -9.5);
+        this.titleSprite.position.set(this.shopCenterPosition.x, 8, this.shopCenterPosition.z - 9.5);
         this.titleSprite.scale.set(4, 1, 1);
         this.titleSprite.visible = false;
         this.scene.add(this.titleSprite);
@@ -83,7 +86,7 @@ export class ShopManager {
         const closeTexture = new THREE.CanvasTexture(closeCanvas);
         const closeMaterial = new THREE.SpriteMaterial({ map: closeTexture });
         this.closeButton = new THREE.Sprite(closeMaterial);
-        this.closeButton.position.set(9, 8, -9);
+        this.closeButton.position.set(this.shopCenterPosition.x + 9, 8, this.shopCenterPosition.z - 9);
         this.closeButton.scale.set(0.8, 0.8, 1);
         this.closeButton.visible = false;
         this.scene.add(this.closeButton);
@@ -132,7 +135,7 @@ export class ShopManager {
         this.continueButton = new THREE.Sprite(continueMaterial);
         
         // Position it at the top for better visibility
-        this.continueButton.position.set(0, 1, -5); // Move closer to the camera to be more visible
+        this.continueButton.position.set(this.shopCenterPosition.x, 1, this.shopCenterPosition.z - 5); // Move closer to the camera to be more visible
         this.continueButton.scale.set(4, 1, 1);
         this.continueButton.visible = false;
         this.scene.add(this.continueButton);
@@ -156,6 +159,11 @@ export class ShopManager {
         if (this.isShopActive) return;
         
         this.isShopActive = true;
+        
+        // Teleport player to the shop area
+        if (this.gameManager.hero && this.gameManager.hero.mesh) {
+            this.gameManager.hero.mesh.position.set(this.shopCenterPosition.x, this.gameManager.hero.mesh.position.y, this.shopCenterPosition.z);
+        }
         
         // We no longer pause the game completely, just slow down time
         // this.gameManager.pauseGame();
@@ -185,6 +193,11 @@ export class ShopManager {
         if (!this.isShopActive) return;
         
         this.isShopActive = false;
+        
+        // Teleport player back to the center of Area A
+        if (this.gameManager.hero && this.gameManager.hero.mesh) {
+            this.gameManager.hero.mesh.position.set(0, this.gameManager.hero.mesh.position.y, 0);
+        }
         
         // Resume normal game speed
         // this.gameManager.resumeGame();
@@ -218,8 +231,8 @@ export class ShopManager {
         for (let i = 0; i < numDisplayedItems; i++) {
             // Calculate position on the circle
             const angle = (i / numDisplayedItems) * Math.PI * 2;
-            const x = Math.cos(angle) * radius;
-            const z = Math.sin(angle) * radius;
+            const x = Math.cos(angle) * radius + this.shopCenterPosition.x;
+            const z = Math.sin(angle) * radius + this.shopCenterPosition.z;
             
             positions.push(new THREE.Vector3(x, centerY, z));
         }
@@ -248,62 +261,50 @@ export class ShopManager {
         
         // Item prices - increase with wave number
         const basePrice = 50;
-        const waveMultiplier = Math.max(1, this.gameManager.gameState.wave * 0.5);
+        const waveMultiplier = 0.5;
         
-        // Create items
-        for (let i = 0; i < positions.length; i++) {
-            // Price depends on item type and wave number
-            let price;
-            switch (selectedItemTypes[i]) {
+        // Create shop items
+        for (let i = 0; i < numDisplayedItems; i++) {
+            const itemType = selectedItemTypes[i];
+            
+            // Calculate price - more powerful items cost more, and price increases with wave number
+            let priceMultiplier = 1;
+            switch(itemType) {
                 case 'health':
-                    price = Math.floor(basePrice * 1.5 * waveMultiplier);
+                    priceMultiplier = 1.5;
                     break;
                 case 'speed':
-                    price = Math.floor(basePrice * 2 * waveMultiplier);
-                    break;
-                case 'ammo':
-                    price = Math.floor(basePrice * 0.8 * waveMultiplier);
-                    break;
-                case 'turretAmmo':
-                    price = Math.floor(basePrice * 1 * waveMultiplier);
-                    break;
-                case 'turretCooldown':
-                    price = Math.floor(basePrice * 2.5 * waveMultiplier);
+                    priceMultiplier = 1.2;
                     break;
                 case 'damage':
-                    price = Math.floor(basePrice * 2.2 * waveMultiplier);
+                    priceMultiplier = 1.8;
                     break;
                 case 'armor':
-                    price = Math.floor(basePrice * 2.3 * waveMultiplier);
+                    priceMultiplier = 2;
                     break;
                 case 'evasion':
-                    price = Math.floor(basePrice * 2.5 * waveMultiplier);
-                    break;
-                case 'mana':
-                    price = Math.floor(basePrice * 1.2 * waveMultiplier);
-                    break;
-                case 'healthRegen':
-                    price = Math.floor(basePrice * 2.2 * waveMultiplier);
-                    break;
-                case 'manaRegen':
-                    price = Math.floor(basePrice * 1.8 * waveMultiplier);
+                    priceMultiplier = 1.5;
                     break;
                 case 'attackSpeed':
-                    price = Math.floor(basePrice * 2.0 * waveMultiplier);
-                    break;
-                case 'jumpHeight':
-                    price = Math.floor(basePrice * 1.5 * waveMultiplier);
-                    break;
-                case 'collection':
-                    price = Math.floor(basePrice * 1.2 * waveMultiplier);
+                    priceMultiplier = 1.8;
                     break;
                 default:
-                    price = Math.floor(basePrice * waveMultiplier);
+                    priceMultiplier = 1;
             }
             
+            // Final price calculation
+            const price = Math.floor(basePrice * priceMultiplier * (1 + (this.gameManager.gameState.wave - 1) * waveMultiplier));
+            
             // Create shop item
-            const item = new ShopItem(this.scene, positions[i], selectedItemTypes[i], price, this.gameManager);
-            this.items.push(item);
+            const shopItem = new ShopItem(
+                this.scene,
+                positions[i],
+                itemType,
+                price,
+                this.gameManager
+            );
+            
+            this.items.push(shopItem);
         }
     }
     
@@ -327,49 +328,48 @@ export class ShopManager {
     }
     
     update(delta) {
+        // Only update items if shop is active
         if (!this.isShopActive) return;
         
-        // Update shop items
-        this.items.forEach(item => {
-            item.update(this.camera, this.mouse);
-        });
+        // Update each shop item
+        for (let i = 0; i < this.items.length; i++) {
+            this.items[i].update(this.camera, this.mouse);
+        }
     }
     
     onMouseMove(event) {
-        // Update mouse position for raycasting
-        this.mouse.x = event.clientX;
-        this.mouse.y = event.clientY;
+        // Update mouse position in normalized device coordinates
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     }
     
     onClick(event) {
         if (!this.isShopActive) return;
         
-        // Calculate normalized device coordinates
-        const rect = event.target.getBoundingClientRect();
-        const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-        const y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-        
         // Create raycaster
         const raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(new THREE.Vector2(x, y), this.camera);
+        raycaster.setFromCamera(this.mouse, this.camera);
         
-        // Check for close button click
+        // Check if close button is clicked
         const closeIntersects = raycaster.intersectObject(this.closeButton);
         if (closeIntersects.length > 0) {
             this.closeShop();
             return;
         }
         
-        // Check for continue button click
+        // Check if continue button is clicked
         const continueIntersects = raycaster.intersectObject(this.continueButton);
         if (continueIntersects.length > 0) {
             this.closeShop();
             return;
         }
         
-        // Check for shop item clicks
-        this.items.forEach(item => {
-            item.checkClick(raycaster);
-        });
+        // Check if any shop item is clicked
+        for (let i = 0; i < this.items.length; i++) {
+            if (this.items[i].checkClick(raycaster)) {
+                // This item was clicked, no need to check others
+                return;
+            }
+        }
     }
 } 

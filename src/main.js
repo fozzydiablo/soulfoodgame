@@ -78,18 +78,99 @@ const groundMaterial = new THREE.MeshStandardMaterial({
     side: THREE.DoubleSide
 });
 
+// Create the original ground
 const ground = new THREE.Mesh(groundGeometry, groundMaterial);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
+// Create a second ground to the right of the original
+// Create a new material with the same texture to avoid texture sharing issues
+const ground2Material = new THREE.MeshStandardMaterial({ 
+    map: groundTexture.clone(),  // Clone the texture to avoid sharing issues
+    side: THREE.DoubleSide
+});
+
+const ground2 = new THREE.Mesh(groundGeometry, ground2Material);
+ground2.rotation.x = -Math.PI / 2;
+ground2.position.x = groundSize; // Position it to the right of the original ground
+ground2.receiveShadow = true;
+scene.add(ground2);
+
 // Initialize game manager
 const gameManager = new GameManager(scene, camera);
+
+// Camera offset from player
+const cameraOffset = new THREE.Vector3(0, 15, 10);
+// Current camera target
+const currentCameraTarget = new THREE.Vector3();
+// Camera smoothing factor (lower is smoother)
+const cameraSmoothness = 0.1;
+// Camera rotation angle
+let cameraRotationAngle = 0;
+// Flag for mouse control
+let isRightMouseDown = false;
+// Last mouse position for calculating delta
+let lastMouseX = 0;
+
+// Add mouse control for camera rotation
+window.addEventListener('mousedown', (event) => {
+    if (event.button === 2) { // Right mouse button
+        isRightMouseDown = true;
+        lastMouseX = event.clientX;
+    }
+});
+
+window.addEventListener('mouseup', (event) => {
+    if (event.button === 2) { // Right mouse button
+        isRightMouseDown = false;
+    }
+});
+
+window.addEventListener('mousemove', (event) => {
+    if (isRightMouseDown) {
+        // Calculate mouse movement delta
+        const deltaX = event.clientX - lastMouseX;
+        // Update rotation angle based on mouse movement
+        // Reverse the sign to fix left/right direction
+        cameraRotationAngle += deltaX * 0.01;
+        lastMouseX = event.clientX;
+    }
+});
+
+// Prevent context menu on right click
+window.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+});
 
 // Game loop
 function animate() {
     requestAnimationFrame(animate);
     gameManager.update();
+    
+    // Make camera follow the player with offset and smooth interpolation
+    const targetPosition = gameManager.hero.mesh.position.clone();
+    
+    // Calculate camera position based on rotation angle
+    const rotatedOffset = new THREE.Vector3(
+        Math.sin(cameraRotationAngle) * cameraOffset.z,
+        cameraOffset.y,
+        Math.cos(cameraRotationAngle) * cameraOffset.z
+    );
+    
+    const desiredCameraPosition = new THREE.Vector3(
+        targetPosition.x + rotatedOffset.x,
+        targetPosition.y + rotatedOffset.y,
+        targetPosition.z + rotatedOffset.z
+    );
+    
+    // Smoothly interpolate camera position
+    camera.position.lerp(desiredCameraPosition, cameraSmoothness);
+    
+    // Smoothly interpolate camera target
+    currentCameraTarget.lerp(targetPosition, cameraSmoothness);
+    camera.lookAt(currentCameraTarget);
+    
     renderer.render(scene, camera);
 }
 

@@ -368,27 +368,29 @@ export class Hero {
     
     updateMovement(delta) {
         // Calculate movement direction relative to the camera (screen space)
-        const cameraForward = new THREE.Vector3(0, 0, -1);
-        const cameraRight = new THREE.Vector3(1, 0, 0);
         
         // Apply camera rotation to get world directions
-        cameraForward.applyQuaternion(this.camera.quaternion);
-        cameraRight.applyQuaternion(this.camera.quaternion);
+        // Get only the horizontal rotation of the camera (y-axis)
+        const cameraDirection = new THREE.Vector3(0, 0, -1);
+        cameraDirection.applyQuaternion(this.camera.quaternion);
+        cameraDirection.y = 0; // Zero out vertical component
+        cameraDirection.normalize();
         
-        // Zero out the y component to keep movement on the ground plane
-        cameraForward.y = 0;
-        cameraRight.y = 0;
-        cameraForward.normalize();
-        cameraRight.normalize();
+        // Calculate right vector perpendicular to forward direction
+        // Use the correct cross product order for right-handed coordinate system
+        const cameraHorizontalRight = new THREE.Vector3();
+        cameraHorizontalRight.crossVectors(new THREE.Vector3(0, 1, 0), cameraDirection);
+        cameraHorizontalRight.normalize();
         
         // Reset movement direction
         this.direction.set(0, 0, 0);
         
         // Add camera-relative movement based on key presses
-        if (this.keys.w) this.direction.add(cameraForward);
-        if (this.keys.s) this.direction.sub(cameraForward);
-        if (this.keys.a) this.direction.sub(cameraRight);
-        if (this.keys.d) this.direction.add(cameraRight);
+        if (this.keys.w) this.direction.add(cameraDirection);
+        if (this.keys.s) this.direction.sub(cameraDirection); 
+        // Fix left/right direction by inverting the direction for a and d
+        if (this.keys.a) this.direction.add(cameraHorizontalRight);
+        if (this.keys.d) this.direction.sub(cameraHorizontalRight);
         
         if (this.direction.length() > 0) {
             this.direction.normalize();
