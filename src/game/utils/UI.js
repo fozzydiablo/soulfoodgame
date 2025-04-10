@@ -383,11 +383,15 @@ export class UI {
     
     // Add a general notification method
     showNotification(message, duration = 2000) {
+        // Static counter for gold notifications
+        if (!this.goldNotificationCount) {
+            this.goldNotificationCount = 0;
+        }
+        
         // Create notification element
         const notification = document.createElement('div');
         notification.className = 'game-notification';
         notification.style.position = 'fixed';
-        notification.style.top = '20%';
         notification.style.left = '50%';
         notification.style.transform = 'translateX(-50%)';
         notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
@@ -401,8 +405,12 @@ export class UI {
         notification.style.pointerEvents = 'none';
         notification.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
         
+        // Default starting position
+        notification.style.top = '20%';
+        
         // Check if this is a gold notification and style accordingly
-        if (message.includes('Gold')) {
+        const isGoldNotification = message.includes('Gold');
+        if (isGoldNotification) {
             notification.style.color = '#FFD700'; // Gold color
             notification.style.textShadow = '0 0 5px #996515'; // Gold shadow
             notification.style.borderLeft = '4px solid #FFD700';
@@ -416,6 +424,12 @@ export class UI {
                     ${goldAmount} Gold
                 </div>`;
                 notification.innerHTML = message;
+                
+                // For gold notifications, increment counter and position with offset
+                this.goldNotificationCount++;
+                const currentNotificationNumber = this.goldNotificationCount;
+                const offset = (currentNotificationNumber - 1) * 50; // 50px spacing
+                notification.style.top = `calc(20% + ${offset}px)`;
             } else {
                 notification.textContent = message;
             }
@@ -445,6 +459,11 @@ export class UI {
             setTimeout(() => {
                 if (notification.parentNode) {
                     document.body.removeChild(notification);
+                    
+                    // Decrement counter for gold notifications when a gold notification is removed
+                    if (isGoldNotification && message.includes('+')) {
+                        this.goldNotificationCount--;
+                    }
                 }
             }, 300);
         }, duration);
