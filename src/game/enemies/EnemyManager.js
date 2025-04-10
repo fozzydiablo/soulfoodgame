@@ -125,4 +125,99 @@ export class EnemyManager {
     isWaveComplete() {
         return this.enemies.length === 0 && this.wave > 0;
     }
+    
+    handleEnemyDeath(enemy) {
+        const index = this.enemies.indexOf(enemy);
+        if (index !== -1) {
+            // Create a death effect at the enemy position
+            this.createDeathEffect(enemy.mesh.position.clone());
+            
+            // Clean up the enemy
+            enemy.cleanup();
+            
+            // Remove from enemies array
+            this.enemies.splice(index, 1);
+            
+            // Let the itemManager handle drops and gold rewards
+            if (this.gameManager.itemManager) {
+                this.gameManager.itemManager.spawnItemDrop(enemy);
+            }
+            
+            // Check for wave completion
+            if (this.enemies.length === 0 && !this.canSpawnMore) {
+                this.waveComplete = true;
+            }
+        }
+    }
+    
+    createDeathEffect(position) {
+        // Create particles for death effect
+        const particleCount = 20;
+        const particles = new THREE.Group();
+        
+        // Use a dark red color for enemy death
+        const color = new THREE.Color(0xAA0000);
+        
+        for (let i = 0; i < particleCount; i++) {
+            const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+            const material = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particle = new THREE.Mesh(geometry, material);
+            
+            // Random offset from the death point
+            particle.position.copy(position);
+            particle.position.y += 0.5;
+            
+            // Random velocity
+            particle.userData.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 4,
+                Math.random() * 4 + 2,
+                (Math.random() - 0.5) * 4
+            );
+            
+            // Add to group
+            particles.add(particle);
+        }
+        
+        this.scene.add(particles);
+        
+        // Animate and remove after 1 second
+        const startTime = Date.now();
+        
+        const animateParticles = () => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            
+            if (elapsed < 1) {
+                // Update each particle
+                particles.children.forEach(particle => {
+                    // Move by velocity
+                    particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.1));
+                    
+                    // Gravity effect
+                    particle.userData.velocity.y -= 0.2;
+                    
+                    // Fade out
+                    particle.material.opacity = 0.8 * (1 - elapsed);
+                    
+                    // Scale down
+                    particle.scale.set(1 - elapsed, 1 - elapsed, 1 - elapsed);
+                });
+                
+                requestAnimationFrame(animateParticles);
+            } else {
+                // Remove particles when done
+                this.scene.remove(particles);
+                particles.children.forEach(particle => {
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                });
+            }
+        };
+        
+        animateParticles();
+    }
 } 

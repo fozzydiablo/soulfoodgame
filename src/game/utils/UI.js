@@ -39,6 +39,23 @@ export class UI {
         this.scoreDisplay.style.marginTop = '5px';
         this.container.appendChild(this.scoreDisplay);
         
+        // Create gold display
+        this.goldDisplay = document.createElement('div');
+        this.goldDisplay.id = 'gold-display';
+        this.goldDisplay.style.marginTop = '5px';
+        this.goldDisplay.style.color = '#FFD700';
+        this.goldDisplay.style.fontWeight = 'bold';
+        this.container.appendChild(this.goldDisplay);
+        
+        // Create stats display
+        this.statsDisplay = document.createElement('div');
+        this.statsDisplay.id = 'stats-display';
+        this.statsDisplay.style.marginTop = '15px';
+        this.statsDisplay.style.fontSize = '16px';
+        this.statsDisplay.style.borderTop = '1px solid rgba(255, 255, 255, 0.3)';
+        this.statsDisplay.style.paddingTop = '5px';
+        this.container.appendChild(this.statsDisplay);
+        
         // Add UI to document
         document.body.appendChild(this.container);
         
@@ -358,39 +375,163 @@ export class UI {
     
     // Add a general notification method
     showNotification(message, duration = 2000) {
+        // Create notification element
         const notification = document.createElement('div');
-        notification.style.position = 'absolute';
-        notification.style.top = '30%';
+        notification.className = 'game-notification';
+        notification.style.position = 'fixed';
+        notification.style.top = '20%';
         notification.style.left = '50%';
-        notification.style.transform = 'translate(-50%, -50%)';
+        notification.style.transform = 'translateX(-50%)';
         notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        notification.style.color = '#FFCC00';
-        notification.style.fontFamily = 'Arial, sans-serif';
-        notification.style.fontSize = '24px';
-        notification.style.padding = '15px';
-        notification.style.borderRadius = '10px';
+        notification.style.color = 'white';
+        notification.style.padding = '10px 20px';
+        notification.style.borderRadius = '5px';
+        notification.style.fontSize = '18px';
+        notification.style.fontWeight = 'bold';
         notification.style.textAlign = 'center';
-        notification.style.zIndex = '100';
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.5s';
+        notification.style.zIndex = '1000';
+        notification.style.pointerEvents = 'none';
+        notification.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
         
-        notification.innerHTML = message;
+        // Check if this is a gold notification and style accordingly
+        if (message.includes('Gold')) {
+            notification.style.color = '#FFD700'; // Gold color
+            notification.style.textShadow = '0 0 5px #996515'; // Gold shadow
+            notification.style.borderLeft = '4px solid #FFD700';
+            notification.style.borderRight = '4px solid #FFD700';
+        }
         
+        notification.textContent = message;
+        
+        // Add to document
         document.body.appendChild(notification);
         
-        // Fade in
-        setTimeout(() => {
-            notification.style.opacity = '1';
-        }, 10);
+        // Fade in animation
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s ease-in-out';
         
-        // Fade out and remove
+        // Force reflow to make transition work
+        notification.offsetHeight;
+        
+        // Fade in
+        notification.style.opacity = '1';
+        
+        // Remove after duration
         setTimeout(() => {
+            // Fade out
             notification.style.opacity = '0';
+            
+            // Remove after fade out
             setTimeout(() => {
-                if (document.body.contains(notification)) {
+                if (notification.parentNode) {
                     document.body.removeChild(notification);
                 }
-            }, 500);
+            }, 300);
         }, duration);
+    }
+    
+    updatePlayerStats(hero) {
+        if (!this.statsDisplay || !hero || !hero.stats) return;
+        
+        const { 
+            damage, 
+            speed, 
+            attackSpeed, 
+            health,
+            maxHealth,
+            healthRegen,
+            armor,
+            evasion,
+            mana,
+            maxMana,
+            manaRegen
+        } = hero.stats;
+        
+        // Create mana bar HTML
+        const manaPercentage = Math.floor((mana / maxMana) * 100);
+        const manaBar = `
+            <div style="width: 100%; height: 8px; background-color: #444; border-radius: 3px; margin-top: 2px; margin-bottom: 8px;">
+                <div style="width: ${manaPercentage}%; height: 100%; background-color: #3366ff; border-radius: 3px;"></div>
+            </div>
+        `;
+        
+        this.statsDisplay.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 5px; color: #ffcc00;">Player Stats:</div>
+            
+            <div style="margin-bottom: 10px;">
+                <div>Mana: <span style="color: #3366ff;">${Math.floor(mana)}/${maxMana}</span></div>
+                ${manaBar}
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 120px;">
+                    <div>Damage: <span style="color: #ff6666;">${damage.toFixed(1)}</span></div>
+                    <div>Armor: <span style="color: #ddcc77;">${armor.toFixed(1)}%</span></div>
+                    <div>Evasion: <span style="color: #77dd77;">${evasion.toFixed(1)}%</span></div>
+                </div>
+                
+                <div style="flex: 1; min-width: 120px;">
+                    <div>Speed: <span style="color: #66ccff;">${speed.toFixed(1)}</span></div>
+                    <div>Fire Rate: <span style="color: #ff9966;">${attackSpeed.toFixed(1)}/s</span></div>
+                    <div>Health Regen: <span style="color: #ff7777;">${(healthRegen * 60).toFixed(1)}/min</span></div>
+                </div>
+                
+                <div style="flex: 1; min-width: 120px;">
+                    <div>Collection: <span style="color: #66ff66;">${hero.collectionRadius.toFixed(1)}</span></div>
+                    <div>Mana Regen: <span style="color: #7777ff;">${(manaRegen * 60).toFixed(1)}/min</span></div>
+                </div>
+            </div>
+        `;
+    }
+    
+    updateGold(gold) {
+        if (!this.goldDisplay) return;
+        
+        this.goldDisplay.innerHTML = `
+            <div style="display: flex; align-items: center;">
+                <div style="background-color: #FFD700; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px;"></div>
+                Gold: ${gold}
+            </div>
+        `;
+    }
+    
+    createTooltip(content, x, y) {
+        // Remove existing tooltip if any
+        this.removeTooltip();
+        
+        // Create tooltip container
+        this.tooltip = document.createElement('div');
+        this.tooltip.style.position = 'absolute';
+        this.tooltip.style.top = `${y}px`;
+        this.tooltip.style.left = `${x}px`;
+        this.tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        this.tooltip.style.color = 'white';
+        this.tooltip.style.padding = '10px';
+        this.tooltip.style.borderRadius = '5px';
+        this.tooltip.style.zIndex = '1000';
+        this.tooltip.style.maxWidth = '300px';
+        this.tooltip.style.pointerEvents = 'none'; // So it doesn't interfere with mouse events
+        
+        // Add content
+        this.tooltip.innerHTML = content;
+        
+        // Add to document
+        document.body.appendChild(this.tooltip);
+        
+        // Make sure tooltip is fully visible on screen
+        const rect = this.tooltip.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            this.tooltip.style.left = `${window.innerWidth - rect.width - 10}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            this.tooltip.style.top = `${window.innerHeight - rect.height - 10}px`;
+        }
+    }
+    
+    removeTooltip() {
+        if (this.tooltip) {
+            document.body.removeChild(this.tooltip);
+            this.tooltip = null;
+        }
     }
 } 

@@ -41,6 +41,21 @@ export class ShopItem {
             case 'damage':
                 color = 0xff5500; // Orange
                 break;
+            case 'armor':
+                color = 0xddcc77; // Gold
+                break;
+            case 'evasion':
+                color = 0x77dd77; // Light green
+                break;
+            case 'mana':
+                color = 0x3366ff; // Blue
+                break;
+            case 'healthRegen':
+                color = 0xff7777; // Light red
+                break;
+            case 'manaRegen':
+                color = 0x7777ff; // Light blue
+                break;
             default:
                 color = 0xffffff; // White
         }
@@ -114,12 +129,44 @@ export class ShopItem {
                 title = 'DAMAGE';
                 description = '+25% DAMAGE';
                 break;
+            case 'armor':
+                title = 'ARMOR';
+                description = '+5% DAMAGE REDUCTION';
+                break;
+            case 'evasion':
+                title = 'EVASION';
+                description = '+3% DODGE CHANCE';
+                break;
+            case 'mana':
+                title = 'MANA';
+                description = '+25 MAX MANA';
+                break;
+            case 'healthRegen':
+                title = 'HEALTH REGEN';
+                description = '+0.1 HP/SEC';
+                break;
+            case 'manaRegen':
+                title = 'MANA REGEN';
+                description = '+0.5 MANA/SEC';
+                break;
+            case 'attackSpeed':
+                title = 'ATTACK SPEED';
+                description = '+10% FIRING RATE';
+                break;
+            case 'jumpHeight':
+                title = 'JUMP HEIGHT';
+                description = '+20% JUMP HEIGHT';
+                break;
+            case 'collection':
+                title = 'COLLECTION';
+                description = '+0.5 COLLECTION RADIUS';
+                break;
             default:
                 title = 'UNKNOWN';
                 description = 'Unknown Item';
         }
         
-        priceText = `${this.price} POINTS`;
+        priceText = `${this.price} GOLD`;
         
         // Create title text (larger and more visible)
         this.titleText = new TextSprite(title, { 
@@ -162,7 +209,7 @@ export class ShopItem {
         // Create price text with distinct styling
         this.priceText = new TextSprite(priceText, { 
             size: 0.6, 
-            color: 0x00ffff,
+            color: 0xFFD700, // Gold color
             fontSize: 28,
             backgroundColor: 0x000066,
             backgroundOpacity: 0.9,
@@ -208,18 +255,18 @@ export class ShopItem {
     }
     
     tryPurchase() {
-        // Check if player has enough points/score
-        if (this.gameManager.gameState.score >= this.price) {
+        // Check if player has enough gold
+        if (this.gameManager.gameState.resources.gold >= this.price) {
             // Apply upgrade based on type
             const success = this.applyUpgrade();
             
             if (success) {
-                // Deduct points/score
-                this.gameManager.gameState.score -= this.price;
+                // Deduct gold
+                this.gameManager.gameState.resources.gold -= this.price;
                 
-                // Update UI score display
+                // Update UI gold display
                 if (this.gameManager.ui) {
-                    this.gameManager.ui.updateScore(this.gameManager.gameState.score);
+                    this.gameManager.ui.updateGold(this.gameManager.gameState.resources.gold);
                 }
                 
                 // Play purchase sound
@@ -235,9 +282,9 @@ export class ShopItem {
                 this.updatePriceText();
             }
         } else {
-            // Show not enough points notification
+            // Show not enough gold notification
             if (this.gameManager.ui) {
-                this.gameManager.ui.showNotification("Not enough points!");
+                this.gameManager.ui.showNotification("Not enough gold!");
             }
             
             // Play error sound
@@ -264,7 +311,8 @@ export class ShopItem {
             case 'speed':
                 // Increase player speed
                 if (this.gameManager.hero) {
-                    this.gameManager.hero.movementSpeed *= 1.2;
+                    this.gameManager.hero.stats.speed *= 1.2;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
                     return true;
                 }
                 break;
@@ -298,7 +346,82 @@ export class ShopItem {
             case 'damage':
                 // Increase player damage
                 if (this.gameManager.hero) {
-                    this.gameManager.hero.damage = (this.gameManager.hero.damage || 1) * 1.25;
+                    this.gameManager.hero.stats.damage = (this.gameManager.hero.stats.damage || 1) * 1.25;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'armor':
+                // Increase armor
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.stats.armor += 5;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'evasion':
+                // Increase evasion
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.stats.evasion += 3;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'mana':
+                // Increase max mana
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.stats.maxMana += 25;
+                    this.gameManager.hero.stats.mana += 25; // Also give immediate mana
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'healthRegen':
+                // Increase health regeneration
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.stats.healthRegen += 0.1;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'manaRegen':
+                // Increase mana regeneration
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.stats.manaRegen += 0.5;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'attackSpeed':
+                // Increase attack speed
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.stats.attackSpeed += 1.0;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'jumpHeight':
+                // Increase jump height
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.stats.jumpHeight *= 1.2;
+                    this.gameManager.hero.stats.jumpSpeed *= 1.1;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
+                    return true;
+                }
+                break;
+                
+            case 'collection':
+                // Increase collection radius
+                if (this.gameManager.hero) {
+                    this.gameManager.hero.collectionRadius += 0.5;
+                    this.gameManager.ui.updatePlayerStats(this.gameManager.hero);
                     return true;
                 }
                 break;
@@ -316,9 +439,9 @@ export class ShopItem {
             this.scene.remove(this.priceText);
         }
         
-        this.priceText = new TextSprite(`${this.price} POINTS`, { 
+        this.priceText = new TextSprite(`${this.price} GOLD`, { 
             size: 0.6, 
-            color: 0x00ffff,
+            color: 0xFFD700, // Gold color
             fontSize: 28,
             backgroundColor: 0x000066,
             backgroundOpacity: 0.9,
@@ -415,14 +538,35 @@ export class ShopItem {
                 this.infoText.visible = true;
             }
             
-            // Show interaction prompt
+            // Show interaction prompt and tooltip
             if (distanceToItem < 3) {
-                this.gameManager.ui.showNotification(`Press E to buy ${this.type} upgrade for ${this.price} points`, 100);
+                this.gameManager.ui.showNotification(`Press E to buy ${this.type} upgrade for ${this.price} gold`, 100);
+                
+                // Create tooltip content
+                const tooltipContent = this.createTooltipContent();
+                
+                // Show tooltip (only in HTML UI, not in 3D world)
+                if (this.gameManager.ui && this.gameManager.ui.createTooltip) {
+                    // Convert 3D position to screen coordinates
+                    const vector = new THREE.Vector3();
+                    vector.setFromMatrixPosition(this.mesh.matrixWorld);
+                    vector.project(camera);
+                    
+                    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+                    const y = (-vector.y * 0.5 + 0.5) * window.innerHeight;
+                    
+                    this.gameManager.ui.createTooltip(tooltipContent, x + 50, y);
+                }
                 
                 // Check for keypress
                 if (this.gameManager.lastKeyPressed === 'e' || this.gameManager.lastKeyPressed === 'E') {
                     this.tryPurchase();
                     this.gameManager.lastKeyPressed = ''; // Reset to prevent multiple purchases
+                }
+            } else {
+                // Hide tooltip when too far
+                if (this.gameManager.ui && this.gameManager.ui.removeTooltip) {
+                    this.gameManager.ui.removeTooltip();
                 }
             }
         } else {
@@ -441,6 +585,113 @@ export class ShopItem {
             if (this.infoText) {
                 this.infoText.visible = false;
             }
+            
+            // Hide tooltip
+            if (this.gameManager.ui && this.gameManager.ui.removeTooltip) {
+                this.gameManager.ui.removeTooltip();
+            }
         }
+    }
+    
+    // Generate tooltip content based on item type
+    createTooltipContent() {
+        let content = `<div style="font-weight: bold; font-size: 18px; color: #FFD700; margin-bottom: 8px;">${this.type.toUpperCase()}</div>`;
+        
+        // Add current stat value if applicable
+        let currentValue = "";
+        switch(this.type) {
+            case 'health':
+                currentValue = `Current: ${this.gameManager.gameState.maxHealth}`;
+                break;
+            case 'speed':
+                currentValue = `Current: ${this.gameManager.hero.stats.speed.toFixed(1)}`;
+                break;
+            case 'damage':
+                currentValue = `Current: ${this.gameManager.hero.stats.damage.toFixed(1)}`;
+                break;
+            case 'attackSpeed':
+                currentValue = `Current: ${this.gameManager.hero.stats.attackSpeed.toFixed(1)}/s`;
+                break;
+            case 'armor':
+                currentValue = `Current: ${this.gameManager.hero.stats.armor.toFixed(1)}%`;
+                break;
+            case 'evasion':
+                currentValue = `Current: ${this.gameManager.hero.stats.evasion.toFixed(1)}%`;
+                break;
+            case 'mana':
+                currentValue = `Current: ${this.gameManager.hero.stats.maxMana}`;
+                break;
+            case 'healthRegen':
+                currentValue = `Current: ${this.gameManager.hero.stats.healthRegen.toFixed(2)}/s`;
+                break;
+            case 'manaRegen':
+                currentValue = `Current: ${this.gameManager.hero.stats.manaRegen.toFixed(2)}/s`;
+                break;
+            case 'collection':
+                currentValue = `Current: ${this.gameManager.hero.collectionRadius.toFixed(1)}`;
+                break;
+            default:
+                currentValue = "";
+        }
+        
+        if (currentValue) {
+            content += `<div style="color: #AAAAAA; margin-bottom: 10px;">${currentValue}</div>`;
+        }
+        
+        // Add description
+        let desc = "";
+        switch(this.type) {
+            case 'health':
+                desc = "Increases your maximum health by 1 point.";
+                break;
+            case 'speed':
+                desc = "Increases your movement speed by 20%.";
+                break;
+            case 'ammo':
+                desc = "Adds 15 ammo to your inventory.";
+                break;
+            case 'turretAmmo':
+                desc = "Increases your turret's ammo capacity by 10.";
+                break;
+            case 'turretCooldown':
+                desc = "Decreases your turret's cooldown by 25%.";
+                break;
+            case 'damage':
+                desc = "Increases your weapon damage by 25%.";
+                break;
+            case 'armor':
+                desc = "Increases your damage reduction by 5%.";
+                break;
+            case 'evasion':
+                desc = "Increases your chance to dodge attacks by 3%.";
+                break;
+            case 'mana':
+                desc = "Increases your maximum mana by 25 points.";
+                break;
+            case 'healthRegen':
+                desc = "Increases your health regeneration by 0.1 per second.";
+                break;
+            case 'manaRegen':
+                desc = "Increases your mana regeneration by 0.5 per second.";
+                break;
+            case 'attackSpeed':
+                desc = "Increases your attack speed by 10%.";
+                break;
+            case 'jumpHeight':
+                desc = "Increases your jump height by 20%.";
+                break;
+            case 'collection':
+                desc = "Increases your resource collection radius by 0.5 units.";
+                break;
+            default:
+                desc = "Unknown upgrade effect.";
+        }
+        
+        content += `<div style="color: #FFFFFF; margin-bottom: 10px;">${desc}</div>`;
+        
+        // Add price
+        content += `<div style="color: #FFD700; font-weight: bold;">Price: ${this.price} Gold</div>`;
+        
+        return content;
     }
 } 

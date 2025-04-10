@@ -7,6 +7,8 @@ import { ProjectileManager } from './combat/ProjectileManager.js';
 import { TurretManager } from './turrets/TurretManager.js';
 import { ShopManager } from './shop/ShopManager.js';
 import { UI } from './utils/UI.js';
+import { Inventory } from './utils/Inventory.js';
+import { ItemManager } from './items/ItemManager.js';
 
 export class GameManager {
     constructor(scene, camera) {
@@ -38,6 +40,7 @@ export class GameManager {
             score: 0,
             resources: {
                 ammo: 10, // Start with 10 ammo
+                gold: 100  // Start with 100 gold
             },
             health: 10,   // Player has 10 health
             maxHealth: 10,
@@ -45,12 +48,22 @@ export class GameManager {
             isPaused: false
         };
         
+        // Initialize inventory system
+        this.inventory = new Inventory(this);
+        
+        // Initialize item manager
+        this.itemManager = new ItemManager(scene, this);
+        
         // Update UI with initial state
         this.ui.updateAmmo(this.gameState.resources.ammo);
         this.ui.updateHealth(this.gameState.health, this.gameState.maxHealth);
         this.ui.updateWave(this.gameState.wave);
         this.ui.updateScore(this.gameState.score);
+        this.ui.updateGold(this.gameState.resources.gold);
         this.ui.createTurretIndicator();
+        
+        // Add player stats to UI
+        this.ui.updatePlayerStats(this.hero);
         
         // Set base turret ammo
         this.turretManager.baseTurretAmmo = 30;
@@ -95,6 +108,9 @@ export class GameManager {
             // Update shop items
             this.shopManager.update(delta);
             
+            // Update UI
+            this.ui.updatePlayerStats(this.hero);
+            
             return;
         }
         
@@ -108,6 +124,12 @@ export class GameManager {
         this.buildingManager.update(delta);
         this.projectileManager.update(delta);
         this.turretManager.update(delta);
+        
+        // Update item manager
+        this.itemManager.update(delta);
+        
+        // Update player stats in UI
+        this.ui.updatePlayerStats(this.hero);
         
         // Check for collisions and interactions
         this.checkCollisions();
@@ -185,9 +207,9 @@ export class GameManager {
         // Update UI
         this.ui.updateScore(this.gameState.score);
         
-        // Award ammo for killing enemies
-        if (Math.random() < 0.3 || enemy.enemyType === 'boss') {
-            // 30% chance to get ammo, guaranteed for bosses
+        // Award ammo for killing enemies (lower chance now that we have gold and items)
+        if (Math.random() < 0.15 || enemy.enemyType === 'boss') {
+            // 15% chance to get ammo, guaranteed for bosses
             const ammoAmount = enemy.enemyType === 'boss' ? 15 : 3;
             this.addAmmo(ammoAmount);
         }
@@ -231,7 +253,27 @@ export class GameManager {
     }
     
     takeDamage(amount) {
-        this.gameState.health -= amount;
+        // Check for evasion (dodge chance)
+        if (this.hero && this.hero.stats.evasion > 0) {
+            // Calculate if attack is evaded based on evasion percentage
+            const evasionRoll = Math.random() * 100;
+            if (evasionRoll < this.hero.stats.evasion) {
+                // Attack evaded!
+                this.ui.showNotification("Attack Dodged!", 1000);
+                return; // No damage taken
+            }
+        }
+        
+        // Apply armor damage reduction if available
+        let finalDamage = amount;
+        if (this.hero && this.hero.stats.armor > 0) {
+            // Reduce damage by armor percentage (capped at 75% reduction)
+            const damageReduction = Math.min(this.hero.stats.armor / 100, 0.75);
+            finalDamage = amount * (1 - damageReduction);
+        }
+        
+        // Apply the final damage
+        this.gameState.health -= finalDamage;
         this.ui.updateHealth(this.gameState.health, this.gameState.maxHealth);
         
         if (this.gameState.health <= 0) {
@@ -249,5 +291,19 @@ export class GameManager {
         this.gameState.isGameOver = true;
         this.ui.showGameOver();
         console.log('Game Over!');
+    }
+    
+    // Add gold method
+    addGold(amount) {
+        if (!this.gameState.resources.gold) {
+            this.gameState.resources.gold = 0;
+        }
+        
+        this.gameState.resources.gold += amount;
+        
+        // Update UI
+        if (this.ui) {
+            this.ui.updateGold(this.gameState.resources.gold);
+        }
     }
 } 

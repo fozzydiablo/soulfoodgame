@@ -210,29 +210,41 @@ export class ShopManager {
         this.cleanupItems();
         
         // Calculate positions in a circle
-        const numItems = 6;
-        const radius = 6; // Distance from center
+        const numDisplayedItems = 6; // Only display 6 items at a time
+        const radius = 8; // Increased radius for more items
         const centerY = 1.5; // Height of the items
         
         const positions = [];
-        for (let i = 0; i < numItems; i++) {
+        for (let i = 0; i < numDisplayedItems; i++) {
             // Calculate position on the circle
-            const angle = (i / numItems) * Math.PI * 2;
+            const angle = (i / numDisplayedItems) * Math.PI * 2;
             const x = Math.cos(angle) * radius;
             const z = Math.sin(angle) * radius;
             
             positions.push(new THREE.Vector3(x, centerY, z));
         }
         
-        // Item types
-        const itemTypes = [
+        // All possible item types - we'll randomly select 6 from this list
+        const allItemTypes = [
             'health',
             'speed',
             'ammo',
             'turretAmmo',
             'turretCooldown',
-            'damage'
+            'damage',
+            'armor',
+            'evasion',
+            'mana',
+            'healthRegen',
+            'manaRegen',
+            'attackSpeed',
+            'jumpHeight',
+            'collection'  // Added collection upgrade
         ];
+        
+        // Shuffle array and take first 6 items
+        const shuffledItems = this.shuffleArray([...allItemTypes]);
+        const selectedItemTypes = shuffledItems.slice(0, numDisplayedItems);
         
         // Item prices - increase with wave number
         const basePrice = 50;
@@ -242,7 +254,7 @@ export class ShopManager {
         for (let i = 0; i < positions.length; i++) {
             // Price depends on item type and wave number
             let price;
-            switch (itemTypes[i]) {
+            switch (selectedItemTypes[i]) {
                 case 'health':
                     price = Math.floor(basePrice * 1.5 * waveMultiplier);
                     break;
@@ -261,14 +273,47 @@ export class ShopManager {
                 case 'damage':
                     price = Math.floor(basePrice * 2.2 * waveMultiplier);
                     break;
+                case 'armor':
+                    price = Math.floor(basePrice * 2.3 * waveMultiplier);
+                    break;
+                case 'evasion':
+                    price = Math.floor(basePrice * 2.5 * waveMultiplier);
+                    break;
+                case 'mana':
+                    price = Math.floor(basePrice * 1.2 * waveMultiplier);
+                    break;
+                case 'healthRegen':
+                    price = Math.floor(basePrice * 2.2 * waveMultiplier);
+                    break;
+                case 'manaRegen':
+                    price = Math.floor(basePrice * 1.8 * waveMultiplier);
+                    break;
+                case 'attackSpeed':
+                    price = Math.floor(basePrice * 2.0 * waveMultiplier);
+                    break;
+                case 'jumpHeight':
+                    price = Math.floor(basePrice * 1.5 * waveMultiplier);
+                    break;
+                case 'collection':
+                    price = Math.floor(basePrice * 1.2 * waveMultiplier);
+                    break;
                 default:
                     price = Math.floor(basePrice * waveMultiplier);
             }
             
             // Create shop item
-            const item = new ShopItem(this.scene, positions[i], itemTypes[i], price, this.gameManager);
+            const item = new ShopItem(this.scene, positions[i], selectedItemTypes[i], price, this.gameManager);
             this.items.push(item);
         }
+    }
+    
+    // Helper method to shuffle array
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+        }
+        return array;
     }
     
     cleanupItems() {

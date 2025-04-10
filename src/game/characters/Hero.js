@@ -8,12 +8,18 @@ export class Hero {
         this.stats = {
             health: 10,
             maxHealth: 10,
+            healthRegen: 0.1, // Health regenerated per second
             damage: 1,
             speed: 5,
             attackRange: 20,
             attackSpeed: 10, // Increased to 10 shots per second for rapid firing
             jumpHeight: 4,
-            jumpSpeed: 10
+            jumpSpeed: 10,
+            armor: 0,         // Damage reduction percentage
+            evasion: 0,       // Chance to dodge attacks
+            mana: 100,        // Mana pool for special abilities
+            maxMana: 100,
+            manaRegen: 1.0    // Mana regenerated per second
         };
         
         // Create hero model
@@ -293,6 +299,7 @@ export class Hero {
         this.updateMovement(delta);
         this.updateJumping(delta);
         this.updateAnimation(delta);
+        this.updateStats(delta);
         
         // Check for resource collection automatically
         this.checkResourceCollection();
@@ -507,5 +514,42 @@ export class Hero {
         };
         
         animateParticles();
+    }
+    
+    // Regenerate health and mana over time
+    updateStats(delta) {
+        // Health regeneration
+        if (this.stats.health < this.stats.maxHealth && this.stats.healthRegen > 0) {
+            // Calculate regen amount based on delta time
+            const regenAmount = this.stats.healthRegen * delta;
+            
+            // Update health in the game state
+            this.gameManager.gameState.health = Math.min(
+                this.gameManager.gameState.health + regenAmount,
+                this.gameManager.gameState.maxHealth
+            );
+            
+            // Only update UI if regeneration is significant (avoid constant UI updates)
+            if (Math.floor(this.gameManager.gameState.health) > Math.floor(this.gameManager.gameState.health - regenAmount)) {
+                this.gameManager.ui.updateHealth(
+                    this.gameManager.gameState.health, 
+                    this.gameManager.gameState.maxHealth
+                );
+            }
+        }
+        
+        // Mana regeneration
+        if (this.stats.mana < this.stats.maxMana && this.stats.manaRegen > 0) {
+            // Calculate regen amount based on delta time
+            const regenAmount = this.stats.manaRegen * delta;
+            
+            // Update mana
+            this.stats.mana = Math.min(this.stats.mana + regenAmount, this.stats.maxMana);
+            
+            // Only update UI if regeneration is significant
+            if (Math.floor(this.stats.mana) > Math.floor(this.stats.mana - regenAmount)) {
+                // The UI update will happen in gameManager.update() which calls updatePlayerStats
+            }
+        }
     }
 } 

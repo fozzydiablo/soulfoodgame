@@ -282,13 +282,15 @@ export class Enemy {
         // Add death animation
         this.playDeathAnimation();
         
-        // Remove from scene after animation
-        setTimeout(() => {
-            if (this.mesh) {
-                this.scene.remove(this.mesh);
-                this.mesh = null;
-            }
-        }, 1000);
+        // Notify EnemyManager about death for item drops and score
+        if (this.gameManager && this.gameManager.enemyManager) {
+            this.gameManager.enemyManager.handleEnemyDeath(this);
+            
+            // Award score for killing enemy
+            this.gameManager.awardScoreForEnemy(this);
+        }
+        
+        // No need to remove from scene here as EnemyManager will handle that
     }
     
     playDeathAnimation() {
@@ -315,5 +317,13 @@ export class Enemy {
         };
         
         animateFade();
+    }
+    
+    cleanup() {
+        // Remove from scene
+        if (this.mesh) {
+            this.scene.remove(this.mesh);
+            this.mesh = null;
+        }
     }
 } 
