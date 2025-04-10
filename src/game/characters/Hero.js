@@ -399,9 +399,43 @@ export class Hero {
                 this.animationState = 'walking';
             }
             
-            // Move the character
+            // Calculate new position with velocity
             this.velocity.copy(this.direction).multiplyScalar(this.stats.speed * delta);
-            this.mesh.position.add(this.velocity);
+            
+            // Store current position before moving
+            const currentPosition = this.mesh.position.clone();
+            
+            // Calculate target position
+            const targetPosition = currentPosition.clone().add(this.velocity);
+            
+            // Check for wall collisions
+            const buildingManager = this.gameManager.buildingManager;
+            const characterRadius = 1.0; // Player collision radius
+            
+            // Check if the target position would cause a wall collision
+            if (buildingManager && buildingManager.checkWallCollision(targetPosition, characterRadius)) {
+                // Try to slide along the wall by checking X and Z movements separately
+                const xOnlyMove = currentPosition.clone();
+                xOnlyMove.x = targetPosition.x;
+                
+                const zOnlyMove = currentPosition.clone();
+                zOnlyMove.z = targetPosition.z;
+                
+                // Check if we can move in just the X direction
+                if (!buildingManager.checkWallCollision(xOnlyMove, characterRadius)) {
+                    // X movement is valid
+                    this.mesh.position.x = xOnlyMove.x;
+                }
+                // Check if we can move in just the Z direction 
+                else if (!buildingManager.checkWallCollision(zOnlyMove, characterRadius)) {
+                    // Z movement is valid
+                    this.mesh.position.z = zOnlyMove.z;
+                }
+                // If both X and Z cause collisions, don't move (we're in a corner)
+            } else {
+                // No collision, apply the full movement
+                this.mesh.position.copy(targetPosition);
+            }
         } else {
             this.isMoving = false;
             if (!this.isJumping && !this.isFalling) {
@@ -430,92 +464,144 @@ export class Hero {
     
     // Check for resources to collect
     checkResourceCollection() {
-        if (!this.gameManager || !this.gameManager.resourceManager) return;
-        
-        const resources = this.gameManager.resourceManager.resources;
-        for (let i = resources.length - 1; i >= 0; i--) {
-            const resource = resources[i];
-            if (resource && resource.mesh && !resource.isCollected) {
-                const distance = this.mesh.position.distanceTo(resource.mesh.position);
-                if (distance <= this.collectionRadius) {
-                    console.log(`Auto-collecting ${resource.type}`);
-                    const amount = resource.collect();
-                    this.gameManager.addResources(resource.type, amount);
+        try {
+            // Check if gameManager and resourceManager exist
+            if (!this.gameManager || !this.gameManager.resourceManager) return;
+            
+            // Check if resources array exists
+            const resources = this.gameManager.resourceManager.resources;
+            if (!resources || !Array.isArray(resources)) return;
+            
+            for (let i = resources.length - 1; i >= 0; i--) {
+                // Skip undefined or null resources
+                if (i >= resources.length) continue;
+                
+                const resource = resources[i];
+                
+                // Make sure resource and resource.mesh exist before accessing resource.mesh.position
+                if (resource && 
+                    resource.mesh && 
+                    resource.mesh.position && 
+                    typeof resource.mesh.position.distanceTo === 'function' && 
+                    !resource.isCollected) {
                     
-                    // Visual effect for collection
-                    this.createCollectionEffect(resource.mesh.position.clone());
+                    const distance = this.mesh.position.distanceTo(resource.mesh.position);
+                    if (distance <= this.collectionRadius) {
+                        console.log(`Auto-collecting ${resource.type}`);
+                        try {
+                            const amount = resource.collect();
+                            this.gameManager.addResources(resource.type, amount);
+                            
+                            // Visual effect for collection (only if position is available)
+                            if (resource.mesh && resource.mesh.position) {
+                                this.createCollectionEffect(resource.mesh.position.clone());
+                            }
+                        } catch (err) {
+                            console.error("Error collecting resource:", err);
+                        }
+                    }
                 }
             }
+        } catch (error) {
+            console.error("Error in checkResourceCollection:", error);
         }
     }
     
     // Visual effect for collection
     createCollectionEffect(position) {
-        // Create particles for collection effect
-        const particleCount = 10;
-        const particles = new THREE.Group();
-        
-        for (let i = 0; i < particleCount; i++) {
-            const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-            const material = new THREE.MeshBasicMaterial({
-                color: 0x00FF00, // Green for ammo
-                transparent: true,
-                opacity: 0.8
-            });
+        try {
+            // Validate position is a proper Vector3 with required methods
+            if (!position || typeof position.copy !== 'function') {
+                console.error("Invalid position passed to createCollectionEffect");
+                return;
+            }
             
-            const particle = new THREE.Mesh(geometry, material);
+            // Create particles for collection effect
+            const particleCount = 10;
+            const particles = new THREE.Group();
             
-            // Random offset from the collection point
-            particle.position.copy(position);
-            particle.position.y += 0.5;
-            
-            // Random velocity
-            particle.userData.velocity = new THREE.Vector3(
-                (Math.random() - 0.5) * 2,
-                Math.random() * 3 + 1,
-                (Math.random() - 0.5) * 2
-            );
-            
-            // Add to group
-            particles.add(particle);
-        }
-        
-        this.scene.add(particles);
-        
-        // Animate and remove after 1 second
-        const startTime = Date.now();
-        
-        const animateParticles = () => {
-            const elapsed = (Date.now() - startTime) / 1000;
-            
-            if (elapsed < 1) {
-                // Update each particle
-                particles.children.forEach(particle => {
-                    // Move by velocity
-                    particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.1));
-                    
-                    // Gravity effect
-                    particle.userData.velocity.y -= 0.1;
-                    
-                    // Fade out
-                    particle.material.opacity = 0.8 * (1 - elapsed);
-                    
-                    // Scale down
-                    particle.scale.set(1 - elapsed, 1 - elapsed, 1 - elapsed);
+            for (let i = 0; i < particleCount; i++) {
+                const geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0x00FF00, // Green for ammo
+                    transparent: true,
+                    opacity: 0.8
                 });
                 
-                requestAnimationFrame(animateParticles);
-            } else {
-                // Remove particles when done
-                this.scene.remove(particles);
-                particles.children.forEach(particle => {
-                    particle.geometry.dispose();
-                    particle.material.dispose();
-                });
+                const particle = new THREE.Mesh(geometry, material);
+                
+                // Random offset from the collection point
+                particle.position.copy(position);
+                particle.position.y += 0.5;
+                
+                // Random velocity
+                particle.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    Math.random() * 3 + 1,
+                    (Math.random() - 0.5) * 2
+                );
+                
+                // Add to group
+                particles.add(particle);
             }
-        };
-        
-        animateParticles();
+            
+            this.scene.add(particles);
+            
+            // Animate and remove after 1 second
+            const startTime = Date.now();
+            
+            const animateParticles = () => {
+                try {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    
+                    if (elapsed < 1 && particles && particles.children) {
+                        // Update each particle
+                        particles.children.forEach(particle => {
+                            if (particle && particle.position && particle.userData && particle.userData.velocity) {
+                                // Move by velocity
+                                particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.1));
+                                
+                                // Gravity effect
+                                particle.userData.velocity.y -= 0.1;
+                                
+                                // Fade out
+                                if (particle.material) {
+                                    particle.material.opacity = 0.8 * (1 - elapsed);
+                                }
+                                
+                                // Scale down
+                                particle.scale.set(1 - elapsed, 1 - elapsed, 1 - elapsed);
+                            }
+                        });
+                        
+                        requestAnimationFrame(animateParticles);
+                    } else {
+                        // Remove particles when done
+                        if (particles) {
+                            this.scene.remove(particles);
+                            if (particles.children) {
+                                particles.children.forEach(particle => {
+                                    if (particle) {
+                                        if (particle.geometry) particle.geometry.dispose();
+                                        if (particle.material) particle.material.dispose();
+                                    }
+                                });
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error in animateParticles:", error);
+                    // Clean up in case of error
+                    if (particles) {
+                        this.scene.remove(particles);
+                    }
+                }
+            };
+            
+            animateParticles();
+        } catch (error) {
+            console.error("Error in createCollectionEffect:", error);
+        }
     }
     
     // Regenerate health and mana over time

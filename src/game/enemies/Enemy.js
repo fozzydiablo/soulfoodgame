@@ -170,9 +170,50 @@ export class Enemy {
             .subVectors(targetPosition, this.mesh.position)
             .normalize();
         
-        // Move towards target
+        // Calculate velocity
         const velocity = direction.multiplyScalar(this.stats.speed * delta);
-        this.mesh.position.add(velocity);
+        
+        // Store current position before moving
+        const currentPosition = this.mesh.position.clone();
+        
+        // Calculate target position after movement
+        const newPosition = currentPosition.clone().add(velocity);
+        
+        // Check for wall collisions using the building manager
+        const buildingManager = this.gameManager.buildingManager;
+        const enemyRadius = this.stats.hitboxSize || 0.8; // Use hitboxSize or default if not set
+        
+        if (buildingManager && buildingManager.checkWallCollision(newPosition, enemyRadius)) {
+            // Try to slide along the wall by trying X and Z movement separately
+            const xOnlyMove = currentPosition.clone();
+            xOnlyMove.x = newPosition.x;
+            
+            const zOnlyMove = currentPosition.clone();
+            zOnlyMove.z = newPosition.z;
+            
+            // Check if we can move in just the X direction
+            if (!buildingManager.checkWallCollision(xOnlyMove, enemyRadius)) {
+                // X movement is valid
+                this.mesh.position.x = xOnlyMove.x;
+            }
+            // Check if we can move in just the Z direction
+            else if (!buildingManager.checkWallCollision(zOnlyMove, enemyRadius)) {
+                // Z movement is valid
+                this.mesh.position.z = zOnlyMove.z;
+            }
+            // If both directions cause collisions, pick a new random target offset
+            else {
+                // Generate a new random offset for future attempts
+                this.positionOffset = new THREE.Vector3(
+                    (Math.random() - 0.5) * 5,
+                    0,
+                    (Math.random() - 0.5) * 5
+                );
+            }
+        } else {
+            // No collision, apply the full movement
+            this.mesh.position.copy(newPosition);
+        }
         
         // Face player (not the offset target, so enemies still look at player)
         this.mesh.lookAt(new THREE.Vector3(

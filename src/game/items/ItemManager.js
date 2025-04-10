@@ -55,8 +55,9 @@ export class ItemManager {
     }
     
     spawnItemDrop(enemy) {
-        if (!enemy || !enemy.mesh) {
-            console.error("Invalid enemy passed to spawnItemDrop");
+        // Validate the enemy object has the required properties
+        if (!enemy || !enemy.mesh || !enemy.mesh.position || !enemy.enemyType) {
+            console.error("Invalid enemy passed to spawnItemDrop:", enemy);
             return;
         }
         

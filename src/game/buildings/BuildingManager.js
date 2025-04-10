@@ -4,6 +4,7 @@ export class BuildingManager {
     constructor(scene) {
         this.scene = scene;
         this.buildings = [];
+        this.boundaryWalls = []; // Separate array to track boundary walls for collision
         this.buildingTypes = {
             tower: {
                 cost: { gold: 50, wood: 20 },
@@ -29,6 +30,44 @@ export class BuildingManager {
     
     update(delta) {
         this.buildings.forEach(building => building.update(delta));
+    }
+    
+    // Check if a position collides with any boundary wall
+    checkWallCollision(position, radius = 1.0) {
+        for (const wall of this.boundaryWalls) {
+            // Get wall dimensions and position
+            const size = wall.geometry.parameters;
+            const wallPos = wall.position.clone();
+            
+            // Calculate the closest point on the wall box to the position
+            const closest = new THREE.Vector3().copy(position);
+            
+            // Clamp position to the box boundaries
+            closest.x = Math.max(wallPos.x - size.width / 2, Math.min(wallPos.x + size.width / 2, closest.x));
+            closest.y = Math.max(wallPos.y - size.height / 2, Math.min(wallPos.y + size.height / 2, closest.y));
+            closest.z = Math.max(wallPos.z - size.depth / 2, Math.min(wallPos.z + size.depth / 2, closest.z));
+            
+            // Calculate distance from closest point to position
+            const distance = position.distanceTo(closest);
+            
+            // If distance is less than character radius, there's a collision
+            if (distance < radius) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    // Get the corrected position to prevent wall penetration
+    getValidPosition(currentPosition, targetPosition, radius = 1.0) {
+        // If there's no collision, return the target position
+        if (!this.checkWallCollision(targetPosition, radius)) {
+            return targetPosition;
+        }
+        
+        // If trying to move would cause a collision, return the current position
+        return currentPosition;
     }
     
     createBoundaryWalls() {
@@ -196,6 +235,9 @@ export class BuildingManager {
         wall.receiveShadow = true;
         this.scene.add(wall);
         
+        // Store wall in boundaryWalls array for collision detection
+        this.boundaryWalls.push(wall);
+        
         // Create battlement on top (crenellations)
         this.createBattlements(position, size, material, direction);
         
@@ -261,6 +303,9 @@ export class BuildingManager {
             battlement.castShadow = true;
             battlement.receiveShadow = true;
             this.scene.add(battlement);
+            
+            // Add battlement to collision array
+            this.boundaryWalls.push(battlement);
         }
     }
     
@@ -275,6 +320,14 @@ export class BuildingManager {
         tower.castShadow = true;
         tower.receiveShadow = true;
         this.scene.add(tower);
+        
+        // Add tower to collision array - use a box approx for cylinder
+        const towerBox = new THREE.Mesh(
+            new THREE.BoxGeometry(towerRadius * 2, towerHeight, towerRadius * 2),
+            new THREE.MeshBasicMaterial({ visible: false })
+        );
+        towerBox.position.copy(tower.position);
+        this.boundaryWalls.push(towerBox);
         
         // Create tower roof
         const roofGeometry = new THREE.ConeGeometry(towerRadius + 0.5, 2, 16);

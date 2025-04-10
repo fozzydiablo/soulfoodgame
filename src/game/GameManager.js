@@ -45,7 +45,8 @@ export class GameManager {
             health: 10,   // Player has 10 health
             maxHealth: 10,
             isGameOver: false,
-            isPaused: false
+            isPaused: false,
+            isBetweenWaves: false // New flag to track between-waves state
         };
         
         // Initialize inventory system
@@ -100,25 +101,18 @@ export class GameManager {
         
         const delta = this.clock.getDelta();
         
-        // Update hero and shop if shop is active
-        if (this.shopManager.isShopActive) {
-            // Allow player movement and camera rotation in shop
-            this.hero.update(delta);
-            
-            // Update shop items
-            this.shopManager.update(delta);
-            
-            // Update UI
-            this.ui.updatePlayerStats(this.hero);
-            
-            return;
-        }
-        
-        // If game is paused but not in shop, don't update anything
+        // If game is paused, don't update anything
         if (this.gameState.isPaused) return;
         
-        // Update game systems
+        // Always update hero for movement
         this.hero.update(delta);
+        
+        // If player is near the shop, update shop items but don't exit early
+        if (this.hero.mesh.position.distanceTo(this.shopManager.shopCenterPosition) < 20) {
+            this.shopManager.update(delta);
+        }
+        
+        // Always update game systems
         this.enemyManager.update(delta, this.hero.mesh.position);
         this.resourceManager.update(delta);
         this.buildingManager.update(delta);
@@ -134,8 +128,8 @@ export class GameManager {
         // Check for collisions and interactions
         this.checkCollisions();
         
-        // Check for wave completion
-        if (this.enemyManager.isWaveComplete()) {
+        // Only check for wave completion when not between waves (waiting in shop)
+        if (!this.gameState.isBetweenWaves && this.enemyManager.isWaveComplete()) {
             this.waveComplete();
         }
     }
@@ -218,14 +212,27 @@ export class GameManager {
     waveComplete() {
         console.log(`Wave ${this.gameState.wave} completed!`);
         
+        // Set between-waves flag to true
+        this.gameState.isBetweenWaves = true;
+        
         // Increment wave count
         this.gameState.wave++;
         
         // Update wave display
         this.ui.updateWave(this.gameState.wave);
         
-        // Open shop between waves
-        this.shopManager.openShop();
+        // Transport player to shop area (Area B)
+        this.hero.mesh.position.set(
+            this.shopManager.shopCenterPosition.x,
+            this.hero.mesh.position.y,
+            this.shopManager.shopCenterPosition.z
+        );
+        
+        // Refresh shop items
+        this.shopManager.refreshShopItems();
+        
+        // Show notification to player
+        this.ui.showNotification("Wave completed! Visit the shop and click 'Start Next Wave' when ready.");
     }
     
     startNextWave() {

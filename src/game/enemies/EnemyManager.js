@@ -129,8 +129,14 @@ export class EnemyManager {
     handleEnemyDeath(enemy) {
         const index = this.enemies.indexOf(enemy);
         if (index !== -1) {
-            // Create a death effect at the enemy position
-            this.createDeathEffect(enemy.mesh.position.clone());
+            // Store enemy position and type for later use since cleanup might remove the mesh
+            const enemyPosition = enemy.mesh ? enemy.mesh.position.clone() : null;
+            const enemyType = enemy.enemyType;
+            
+            // Create a death effect at the enemy position if available
+            if (enemyPosition) {
+                this.createDeathEffect(enemyPosition);
+            }
             
             // Clean up the enemy
             enemy.cleanup();
@@ -144,8 +150,15 @@ export class EnemyManager {
             }
             
             // Let the itemManager handle drops (gold rewards have been removed)
-            if (this.gameManager && this.gameManager.itemManager) {
-                this.gameManager.itemManager.spawnItemDrop(enemy);
+            // Create a clean enemy info object with just the data needed for item drop
+            if (this.gameManager && this.gameManager.itemManager && enemyPosition) {
+                const enemyInfo = {
+                    enemyType: enemyType,
+                    mesh: {
+                        position: enemyPosition
+                    }
+                };
+                this.gameManager.itemManager.spawnItemDrop(enemyInfo);
             }
             
             // Check for wave completion

@@ -7,7 +7,7 @@ export class ShopManager {
         this.camera = gameManager.camera;
         this.gameManager = gameManager;
         this.items = [];
-        this.isShopActive = false;
+        this.isShopActive = true; // Shop is always active
         this.mouse = new THREE.Vector2();
         
         // Shop location (now in area B)
@@ -24,6 +24,12 @@ export class ShopManager {
         
         // Create shop background
         this.createBackground();
+        
+        // Create helper text for the next wave button
+        this.createNextWaveHelperText();
+        
+        // Don't initialize shop items immediately - wait until gameState is ready
+        // We'll initialize them on the first update call instead
     }
     
     createBackground() {
@@ -38,7 +44,7 @@ export class ShopManager {
         
         this.background = new THREE.Mesh(geometry, material);
         this.background.position.set(this.shopCenterPosition.x, 5, this.shopCenterPosition.z - 10);
-        this.background.visible = false;
+        this.background.visible = false; // Initially hidden until first update
         this.scene.add(this.background);
         
         // Create shop title
@@ -65,157 +71,150 @@ export class ShopManager {
         this.titleSprite = new THREE.Sprite(titleMaterial);
         this.titleSprite.position.set(this.shopCenterPosition.x, 8, this.shopCenterPosition.z - 9.5);
         this.titleSprite.scale.set(4, 1, 1);
-        this.titleSprite.visible = false;
+        this.titleSprite.visible = false; // Initially hidden until first update
         this.scene.add(this.titleSprite);
         
-        // Create close button
-        const closeCanvas = document.createElement('canvas');
-        const closeContext = closeCanvas.getContext('2d');
-        closeCanvas.width = 128;
-        closeCanvas.height = 128;
-        
-        closeContext.fillStyle = '#aa0000';
-        closeContext.fillRect(0, 0, closeCanvas.width, closeCanvas.height);
-        
-        closeContext.font = 'bold 96px Arial';
-        closeContext.fillStyle = '#ffffff';
-        closeContext.textAlign = 'center';
-        closeContext.textBaseline = 'middle';
-        closeContext.fillText('X', closeCanvas.width / 2, closeCanvas.height / 2);
-        
-        const closeTexture = new THREE.CanvasTexture(closeCanvas);
-        const closeMaterial = new THREE.SpriteMaterial({ map: closeTexture });
-        this.closeButton = new THREE.Sprite(closeMaterial);
-        this.closeButton.position.set(this.shopCenterPosition.x + 9, 8, this.shopCenterPosition.z - 9);
-        this.closeButton.scale.set(0.8, 0.8, 1);
-        this.closeButton.visible = false;
-        this.scene.add(this.closeButton);
-        
-        // Create "continue" button
-        const continueCanvas = document.createElement('canvas');
-        const continueContext = continueCanvas.getContext('2d');
-        continueCanvas.width = 512;
-        continueCanvas.height = 128;
+        // Create "next wave" button
+        const nextWaveCanvas = document.createElement('canvas');
+        const nextWaveContext = nextWaveCanvas.getContext('2d');
+        nextWaveCanvas.width = 512;
+        nextWaveCanvas.height = 128;
         
         // Create background with gradient
-        const gradient = continueContext.createLinearGradient(0, 0, 0, continueCanvas.height);
+        const gradient = nextWaveContext.createLinearGradient(0, 0, 0, nextWaveCanvas.height);
         gradient.addColorStop(0, '#007700');
         gradient.addColorStop(1, '#005500');
-        continueContext.fillStyle = gradient;
-        continueContext.fillRect(0, 0, continueCanvas.width, continueCanvas.height);
+        nextWaveContext.fillStyle = gradient;
+        nextWaveContext.fillRect(0, 0, nextWaveCanvas.width, nextWaveCanvas.height);
         
         // Add glowing border
-        continueContext.strokeStyle = '#00ff00';
-        continueContext.lineWidth = 6;
-        continueContext.shadowColor = '#00ff00';
-        continueContext.shadowBlur = 15;
-        continueContext.shadowOffsetX = 0;
-        continueContext.shadowOffsetY = 0;
-        continueContext.strokeRect(6, 6, continueCanvas.width - 12, continueCanvas.height - 12);
+        nextWaveContext.strokeStyle = '#00ff00';
+        nextWaveContext.lineWidth = 6;
+        nextWaveContext.shadowColor = '#00ff00';
+        nextWaveContext.shadowBlur = 15;
+        nextWaveContext.shadowOffsetX = 0;
+        nextWaveContext.shadowOffsetY = 0;
+        nextWaveContext.strokeRect(6, 6, nextWaveCanvas.width - 12, nextWaveCanvas.height - 12);
         
         // Add inner border for depth
-        continueContext.strokeStyle = '#ffffff';
-        continueContext.lineWidth = 2;
-        continueContext.shadowBlur = 0;
-        continueContext.strokeRect(12, 12, continueCanvas.width - 24, continueCanvas.height - 24);
+        nextWaveContext.strokeStyle = '#ffffff';
+        nextWaveContext.lineWidth = 2;
+        nextWaveContext.shadowBlur = 0;
+        nextWaveContext.strokeRect(12, 12, nextWaveCanvas.width - 24, nextWaveCanvas.height - 24);
         
         // Add text with shadow for better visibility
-        continueContext.font = 'bold 48px Arial';
-        continueContext.fillStyle = '#ffffff';
-        continueContext.shadowColor = '#000000';
-        continueContext.shadowBlur = 8;
-        continueContext.shadowOffsetX = 2;
-        continueContext.shadowOffsetY = 2;
-        continueContext.textAlign = 'center';
-        continueContext.textBaseline = 'middle';
-        continueContext.fillText('CONTINUE TO NEXT WAVE', continueCanvas.width / 2, continueCanvas.height / 2);
+        nextWaveContext.font = 'bold 48px Arial';
+        nextWaveContext.fillStyle = '#ffffff';
+        nextWaveContext.shadowColor = '#000000';
+        nextWaveContext.shadowBlur = 8;
+        nextWaveContext.shadowOffsetX = 2;
+        nextWaveContext.shadowOffsetY = 2;
+        nextWaveContext.textAlign = 'center';
+        nextWaveContext.textBaseline = 'middle';
+        nextWaveContext.fillText('START NEXT WAVE', nextWaveCanvas.width / 2, nextWaveCanvas.height / 2);
         
-        const continueTexture = new THREE.CanvasTexture(continueCanvas);
-        const continueMaterial = new THREE.SpriteMaterial({ map: continueTexture });
-        this.continueButton = new THREE.Sprite(continueMaterial);
+        const nextWaveTexture = new THREE.CanvasTexture(nextWaveCanvas);
+        const nextWaveMaterial = new THREE.SpriteMaterial({ map: nextWaveTexture });
+        this.nextWaveButton = new THREE.Sprite(nextWaveMaterial);
         
-        // Position it at the top for better visibility
-        this.continueButton.position.set(this.shopCenterPosition.x, 1, this.shopCenterPosition.z - 5); // Move closer to the camera to be more visible
-        this.continueButton.scale.set(4, 1, 1);
-        this.continueButton.visible = false;
-        this.scene.add(this.continueButton);
+        // Position it more prominently - centered and elevated for better visibility
+        this.nextWaveButton.position.set(this.shopCenterPosition.x, 3, this.shopCenterPosition.z - 6);
+        this.nextWaveButton.scale.set(5, 1.5, 1); // Make it larger
+        this.nextWaveButton.visible = false; // Initially hidden until first update
+        this.scene.add(this.nextWaveButton);
         
-        // Create animation for the continue button to make it more noticeable
-        this.continueButtonAnimation = () => {
-            if (this.continueButton && this.continueButton.visible) {
-                // Make it pulse gently
-                const scale = 1 + Math.sin(Date.now() * 0.003) * 0.05;
-                this.continueButton.scale.set(4 * scale, 1 * scale, 1);
+        // Create animation for the next wave button to make it more noticeable
+        this.nextWaveButtonAnimation = () => {
+            if (this.nextWaveButton && this.nextWaveButton.visible) {
+                // Make it pulse more dramatically
+                const time = Date.now() * 0.003;
+                const scale = 1 + Math.sin(time) * 0.1; // Increased pulsing
+                const baseScaleX = 5;
+                const baseScaleY = 1.5;
+                
+                this.nextWaveButton.scale.set(baseScaleX * scale, baseScaleY * scale, 1);
+                
+                // Add a slight floating motion
+                this.nextWaveButton.position.y = 3 + Math.sin(time * 0.7) * 0.2;
                 
                 // Request next frame if button is still visible
-                if (this.isShopActive) {
-                    requestAnimationFrame(this.continueButtonAnimation);
-                }
+                requestAnimationFrame(this.nextWaveButtonAnimation);
             }
         };
     }
     
-    openShop() {
-        if (this.isShopActive) return;
+    createNextWaveHelperText() {
+        // Create a canvas for the helper text
+        const helperCanvas = document.createElement('canvas');
+        const helperContext = helperCanvas.getContext('2d');
+        helperCanvas.width = 512;
+        helperCanvas.height = 64;
         
-        this.isShopActive = true;
+        // Fill with semi-transparent black background
+        helperContext.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        helperContext.fillRect(0, 0, helperCanvas.width, helperCanvas.height);
         
-        // Teleport player to the shop area
-        if (this.gameManager.hero && this.gameManager.hero.mesh) {
-            this.gameManager.hero.mesh.position.set(this.shopCenterPosition.x, this.gameManager.hero.mesh.position.y, this.shopCenterPosition.z);
-        }
+        // Add subtle border
+        helperContext.strokeStyle = '#ffcc00';
+        helperContext.lineWidth = 2;
+        helperContext.strokeRect(4, 4, helperCanvas.width - 8, helperCanvas.height - 8);
         
-        // We no longer pause the game completely, just slow down time
-        // this.gameManager.pauseGame();
+        // Add instructional text
+        helperContext.font = 'bold 24px Arial';
+        helperContext.fillStyle = '#ffffff';
+        helperContext.textAlign = 'center';
+        helperContext.textBaseline = 'middle';
+        helperContext.fillText('Click this button to start the next wave!', helperCanvas.width / 2, helperCanvas.height / 2);
         
-        // Show shop UI elements
-        this.background.visible = true;
-        this.titleSprite.visible = true;
-        this.closeButton.visible = true;
-        this.continueButton.visible = true;
+        // Create texture and sprite
+        const helperTexture = new THREE.CanvasTexture(helperCanvas);
+        const helperMaterial = new THREE.SpriteMaterial({ map: helperTexture });
+        this.helperText = new THREE.Sprite(helperMaterial);
         
-        // Start the continue button animation
-        requestAnimationFrame(this.continueButtonAnimation);
-        
-        // Create shop items
-        this.createShopItems();
-        
-        // Show message to player
-        if (this.gameManager.ui) {
-            this.gameManager.ui.showNotification("Welcome to the shop! Move around to browse upgrades.");
-        }
-        
-        // Play shop sound
-        // this.gameManager.soundManager.playSound('shopOpen');
+        // Position it above the next wave button
+        this.helperText.position.set(this.shopCenterPosition.x, 5, this.shopCenterPosition.z - 6);
+        this.helperText.scale.set(4, 0.8, 1);
+        this.helperText.visible = false; // Initially hidden
+        this.scene.add(this.helperText);
     }
     
-    closeShop() {
-        if (!this.isShopActive) return;
+    startNextWave() {
+        // Refresh shop items when starting a new wave
+        this.refreshShopItems();
         
-        this.isShopActive = false;
+        // Reset the between-waves flag
+        this.gameManager.gameState.isBetweenWaves = false;
         
-        // Teleport player back to the center of Area A
-        if (this.gameManager.hero && this.gameManager.hero.mesh) {
-            this.gameManager.hero.mesh.position.set(0, this.gameManager.hero.mesh.position.y, 0);
-        }
-        
-        // Resume normal game speed
-        // this.gameManager.resumeGame();
-        
-        // Hide shop UI elements
-        this.background.visible = false;
-        this.titleSprite.visible = false;
-        this.closeButton.visible = false;
-        this.continueButton.visible = false;
-        
-        // Clean up shop items
-        this.cleanupItems();
-        
-        // Start next wave
+        // Start the next wave
         this.gameManager.startNextWave();
         
-        // Play shop close sound
-        // this.gameManager.soundManager.playSound('shopClose');
+        // Transport player back to Area A (combat area)
+        this.gameManager.hero.mesh.position.set(0, this.gameManager.hero.mesh.position.y, 0);
+        
+        // Show notification to player
+        if (this.gameManager.ui) {
+            this.gameManager.ui.showNotification("Starting next wave! Returning to combat area.");
+        }
+    }
+    
+    refreshShopItems() {
+        // Clean up existing items
+        this.cleanupItems();
+        
+        // Create new items
+        this.createShopItems();
+        
+        // Flag that we just completed a wave (used to prevent duplicate notifications)
+        this.justCompletedWave = true;
+        
+        // Make sure shop UI elements are visible
+        this.background.visible = true;
+        this.titleSprite.visible = true;
+        this.nextWaveButton.visible = true;
+        this.helperText.visible = true;
+        
+        // Start the next wave button animation
+        requestAnimationFrame(this.nextWaveButtonAnimation);
     }
     
     createShopItems() {
@@ -292,8 +291,13 @@ export class ShopManager {
                     priceMultiplier = 1;
             }
             
+            // Get the current wave number safely, default to 1 if not available
+            const currentWave = this.gameManager.gameState && this.gameManager.gameState.wave 
+                ? this.gameManager.gameState.wave 
+                : 1;
+            
             // Final price calculation
-            const price = Math.floor(basePrice * priceMultiplier * (1 + (this.gameManager.gameState.wave - 1) * waveMultiplier));
+            const price = Math.floor(basePrice * priceMultiplier * (1 + (currentWave - 1) * waveMultiplier));
             
             // Create shop item
             const shopItem = new ShopItem(
@@ -328,12 +332,45 @@ export class ShopManager {
     }
     
     update(delta) {
-        // Only update items if shop is active
-        if (!this.isShopActive) return;
+        // Check if player is near the shop area
+        const playerNearShop = this.gameManager.hero.mesh.position.distanceTo(this.shopCenterPosition) < 15;
         
-        // Update each shop item
-        for (let i = 0; i < this.items.length; i++) {
-            this.items[i].update(this.camera, this.mouse);
+        // If player is near shop, make shop visible and active
+        if (playerNearShop) {
+            // Show shop UI elements if not already visible
+            if (!this.background.visible) {
+                this.background.visible = true;
+                this.titleSprite.visible = true;
+                this.nextWaveButton.visible = true;
+                this.helperText.visible = true;
+                
+                // Start the next wave button animation
+                requestAnimationFrame(this.nextWaveButtonAnimation);
+                
+                // Only show welcome message if player wasn't transported here by wave completion
+                if (this.gameManager.ui && !this.justCompletedWave) {
+                    this.gameManager.ui.showNotification("Welcome to the shop! Browse upgrades.");
+                }
+                this.justCompletedWave = false;
+            }
+            
+            // Initialize shop items if they haven't been created yet and gameState is ready
+            if (this.items.length === 0 && this.gameManager.gameState) {
+                this.createShopItems();
+            }
+            
+            // Update each shop item
+            for (let i = 0; i < this.items.length; i++) {
+                this.items[i].update(this.camera, this.mouse);
+            }
+        } else {
+            // Hide shop UI elements if player is not near and they're visible
+            if (this.background.visible) {
+                this.background.visible = false;
+                this.titleSprite.visible = false;
+                this.nextWaveButton.visible = false;
+                this.helperText.visible = false;
+            }
         }
     }
     
@@ -344,23 +381,17 @@ export class ShopManager {
     }
     
     onClick(event) {
-        if (!this.isShopActive) return;
+        // Only handle clicks if shop UI is visible (player is near shop)
+        if (!this.background.visible) return;
         
         // Create raycaster
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(this.mouse, this.camera);
         
-        // Check if close button is clicked
-        const closeIntersects = raycaster.intersectObject(this.closeButton);
-        if (closeIntersects.length > 0) {
-            this.closeShop();
-            return;
-        }
-        
-        // Check if continue button is clicked
-        const continueIntersects = raycaster.intersectObject(this.continueButton);
-        if (continueIntersects.length > 0) {
-            this.closeShop();
+        // Check if next wave button is clicked
+        const nextWaveIntersects = raycaster.intersectObject(this.nextWaveButton);
+        if (nextWaveIntersects.length > 0) {
+            this.startNextWave();
             return;
         }
         
