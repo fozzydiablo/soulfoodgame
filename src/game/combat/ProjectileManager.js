@@ -34,13 +34,28 @@ export class ProjectileManager {
         // Update all projectiles
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.projectiles[i];
-            projectile.update(delta);
             
-            // Remove projectiles that are too old or out of bounds
+            // Remove projectiles that are destroyed or too old
             if (projectile.isDestroyed || projectile.lifetime > 5) {
                 this.projectiles.splice(i, 1);
+                continue; // Skip updating destroyed projectiles
+            }
+            
+            projectile.update(delta);
+        }
+    }
+    
+    cleanup() {
+        // Remove all projectiles from the scene
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const projectile = this.projectiles[i];
+            if (projectile.mesh && projectile.mesh.parent) {
+                projectile.mesh.parent.remove(projectile.mesh);
             }
         }
+        
+        // Clear the projectiles array
+        this.projectiles = [];
     }
 }
 
@@ -52,6 +67,9 @@ class Projectile {
         this.isPlayerProjectile = isPlayerProjectile;
         this.isDestroyed = false;
         this.lifetime = 0;
+        this.damage = 1; // Default damage
+        this.areaEffect = false; // Default to no area effect
+        this.areaRadius = 0; // Default radius for area effect
         
         // Create projectile mesh
         this.createMesh(position, color);
@@ -92,6 +110,11 @@ class Projectile {
         // Update lifetime
         this.lifetime += delta;
         
+        // Check if mesh exists before accessing its properties
+        if (!this.mesh) {
+            return;
+        }
+        
         // Move projectile
         const movement = this.direction.clone().multiplyScalar(this.speed * delta);
         this.mesh.position.add(movement);
@@ -111,6 +134,11 @@ class Projectile {
     updateTrail(delta) {
         const now = Date.now();
         
+        // Check if mesh exists before accessing its properties
+        if (!this.mesh) {
+            return;
+        }
+        
         // Create new trail particle every 50ms
         if (now - this.lastTrailTime > 50) {
             this.lastTrailTime = now;
@@ -121,6 +149,11 @@ class Projectile {
                 transparent: true,
                 opacity: 0.7
             });
+            
+            // Customize trail for special projectiles
+            if (this.areaEffect && this.isPlayerProjectile) {
+                material.color.set(0xff6600); // Fireball trail
+            }
             
             const particle = new THREE.Mesh(geometry, material);
             particle.position.copy(this.mesh.position);
@@ -155,19 +188,122 @@ class Projectile {
         if (this.isDestroyed) return;
         
         this.isDestroyed = true;
-        this.scene.remove(this.mesh);
+        
+        // If it's an area effect projectile, create explosion
+        if (this.areaEffect && this.isPlayerProjectile) {
+            this.createExplosionEffect();
+        }
+        
+        // Clean up mesh
+        if (this.mesh) {
+            this.scene.remove(this.mesh);
+            this.mesh.geometry.dispose();
+            this.mesh.material.dispose();
+            this.mesh = null;
+        }
         
         // Clean up trail particles
-        this.trailParticles.forEach(particle => {
+        for (let i = this.trailParticles.length - 1; i >= 0; i--) {
+            const particle = this.trailParticles[i];
             this.scene.remove(particle);
             particle.geometry.dispose();
             particle.material.dispose();
-        });
+        }
         this.trailParticles = [];
     }
     
+    createExplosionEffect() {
+        // Store position before destroying the mesh
+        // Safety check for null mesh
+        if (!this.mesh) {
+            console.warn("Attempted to create explosion effect with null mesh");
+            return;
+        }
+        
+        const position = this.mesh.position.clone();
+        
+        // Create explosion particles
+        const particleCount = 30;
+        const particles = new THREE.Group();
+        
+        for (let i = 0; i < particleCount; i++) {
+            const geometry = new THREE.SphereGeometry(0.2, 8, 8);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xff6600, // Orange for fire
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            // Randomize colors slightly for variation
+            const red = 0.9 + Math.random() * 0.1;
+            const green = 0.3 + Math.random() * 0.3;
+            const blue = 0;
+            material.color.setRGB(red, green, blue);
+            
+            const particle = new THREE.Mesh(geometry, material);
+            particle.position.copy(position);
+            
+            // Random direction
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const speed = Math.random() * 5 + 3;
+            
+            particle.userData.velocity = new THREE.Vector3(
+                speed * Math.sin(phi) * Math.cos(theta),
+                speed * Math.sin(phi) * Math.sin(theta) + 2, // Add upward boost
+                speed * Math.cos(phi)
+            );
+            
+            particles.add(particle);
+        }
+        
+        this.scene.add(particles);
+        
+        // Animate and remove after 1 second
+        const startTime = Date.now();
+        
+        const animateExplosion = () => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            
+            if (elapsed < 1) {
+                // Update each particle
+                particles.children.forEach(particle => {
+                    // Move by velocity
+                    particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.05));
+                    
+                    // Slow down velocity
+                    particle.userData.velocity.multiplyScalar(0.92);
+                    
+                    // Gravity effect
+                    particle.userData.velocity.y -= 0.1;
+                    
+                    // Fade out
+                    particle.material.opacity = 0.8 * (1 - elapsed);
+                    
+                    // Grow initially then shrink
+                    const scale = elapsed < 0.3 ? 
+                                1 + elapsed * 3 : 
+                                1 + 0.9 - (elapsed - 0.3) * 2;
+                    particle.scale.set(scale, scale, scale);
+                });
+                
+                requestAnimationFrame(animateExplosion);
+            } else {
+                // Remove particles when done
+                this.scene.remove(particles);
+                particles.children.forEach(particle => {
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                });
+            }
+        };
+        
+        animateExplosion();
+    }
+    
     checkCollision(object) {
-        if (this.isDestroyed || !object.mesh) return false;
+        // Safety checks for null objects or meshes
+        if (this.isDestroyed || !this.mesh || !object || !object.mesh) return false;
         
         const distance = this.mesh.position.distanceTo(object.mesh.position);
         const hitboxSize = object.stats && object.stats.hitboxSize ? object.stats.hitboxSize : 1.2;

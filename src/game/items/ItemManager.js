@@ -135,13 +135,15 @@ export class ItemManager {
     }
     
     cleanup() {
-        // Remove all items from scene
-        this.items.forEach(item => {
-            if (item) {
-                item.cleanup();
+        // Remove all items from the scene
+        for (let i = this.items.length - 1; i >= 0; i--) {
+            const item = this.items[i];
+            if (item.mesh && item.mesh.parent) {
+                item.mesh.parent.remove(item.mesh);
             }
-        });
+        }
         
+        // Clear the items array
         this.items = [];
     }
 } 

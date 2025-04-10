@@ -120,12 +120,8 @@ export class ShopUI {
         // Add to document
         document.body.appendChild(this.container);
         
-        // Add ESC key listener to close shop
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isVisible) {
-                this.hide();
-            }
-        });
+        // Replace the event listener with our property reference
+        window.addEventListener('keydown', this.escKeyListener);
     }
     
     createItemCard(item) {
@@ -372,5 +368,49 @@ export class ShopUI {
             this.container.style.transform = 'translate(-50%, -50%)';
             this.container.style.opacity = '1';
         }, 300);
+    }
+    
+    cleanup() {
+        // Hide the shop UI first
+        this.hide();
+        
+        // Remove the container from the DOM
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        
+        // Remove any tooltips
+        const tooltips = document.querySelectorAll('.item-tooltip');
+        tooltips.forEach(tooltip => {
+            if (tooltip && tooltip.parentNode) {
+                tooltip.parentNode.removeChild(tooltip);
+            }
+        });
+        
+        // Remove any item cards that might be in the DOM but outside our container
+        const itemCards = document.querySelectorAll('.shop-item');
+        itemCards.forEach(card => {
+            if (card && card.parentNode) {
+                card.parentNode.removeChild(card);
+            }
+        });
+        
+        // Remove any shop-related event listeners
+        window.removeEventListener('keydown', this.escKeyListener);
+        
+        // Clear any references to DOM elements
+        this.container = null;
+        this.itemsContainer = null;
+        this.goldDisplay = null;
+        this.goldAmount = null;
+        this.shopItems = [];
+        this.isVisible = false;
+    }
+    
+    // Store the ESC key listener as a property so we can remove it later
+    escKeyListener = (e) => {
+        if (e.key === 'Escape' && this.isVisible) {
+            this.hide();
+        }
     }
 } 

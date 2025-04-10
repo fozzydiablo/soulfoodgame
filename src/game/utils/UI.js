@@ -554,4 +554,39 @@ export class UI {
             this.tooltip = null;
         }
     }
+    
+    cleanup() {
+        // Remove main UI container
+        if (this.container && this.container.parentNode) {
+            this.container.parentNode.removeChild(this.container);
+        }
+        
+        // Remove controls UI
+        const controlsContainer = document.querySelector('div[style*="Controls:"]');
+        if (controlsContainer && controlsContainer.parentNode) {
+            controlsContainer.parentNode.removeChild(controlsContainer);
+        }
+        
+        // Remove turret ability UI
+        if (this.turretAbilityContainer && this.turretAbilityContainer.parentNode) {
+            this.turretAbilityContainer.parentNode.removeChild(this.turretAbilityContainer);
+        }
+        
+        // Remove any active notifications
+        const notifications = document.querySelectorAll('.wave-notification, .notification');
+        notifications.forEach(notification => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        });
+        
+        // Remove next wave button if it exists
+        const nextWaveButton = document.getElementById('next-wave-button');
+        if (nextWaveButton && nextWaveButton.parentNode) {
+            nextWaveButton.parentNode.removeChild(nextWaveButton);
+        }
+        
+        // Remove any tooltips
+        this.removeTooltip();
+    }
 } 

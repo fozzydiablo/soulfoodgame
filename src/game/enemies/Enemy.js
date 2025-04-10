@@ -34,6 +34,11 @@ export class Enemy {
         
         // Create spear
         this.createSpear();
+        
+        // Freeze status
+        this.isFrozen = false;
+        this.frozenUntil = 0;
+        this.originalMaterial = null;
     }
     
     createModel(x, z) {
@@ -137,6 +142,18 @@ export class Enemy {
     
     update(delta, playerPosition) {
         if (this.isDead) return;
+        
+        // Check if still frozen
+        if (this.isFrozen) {
+            const now = Date.now();
+            if (now < this.frozenUntil) {
+                // Still frozen, don't move or attack
+                return;
+            } else {
+                // Unfreeze
+                this.unfreeze();
+            }
+        }
         
         const distanceToPlayer = this.mesh.position.distanceTo(playerPosition);
         
@@ -408,5 +425,125 @@ export class Enemy {
             this.scene.remove(this.mesh);
             this.mesh = null;
         }
+    }
+    
+    freeze(duration) {
+        // Store current time to track freeze duration
+        this.isFrozen = true;
+        this.frozenUntil = Date.now() + (duration * 1000);
+        
+        // Save original materials
+        if (!this.originalMaterial) {
+            this.originalMaterial = [];
+            this.mesh.traverse((child) => {
+                if (child instanceof THREE.Mesh && child.material) {
+                    // Store original material
+                    this.originalMaterial.push({
+                        mesh: child,
+                        material: child.material.clone()
+                    });
+                    
+                    // Apply frozen effect - blue tint and shiny
+                    const frozenMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x99ccff,
+                        metalness: 0.9,
+                        roughness: 0.2,
+                        emissive: 0x3366cc,
+                        emissiveIntensity: 0.2
+                    });
+                    
+                    child.material = frozenMaterial;
+                }
+            });
+        }
+        
+        // Create frost particles
+        this.createFrostParticles();
+    }
+    
+    unfreeze() {
+        if (!this.isFrozen) return;
+        
+        this.isFrozen = false;
+        
+        // Restore original materials
+        if (this.originalMaterial) {
+            this.originalMaterial.forEach(item => {
+                item.mesh.material = item.material;
+            });
+            this.originalMaterial = null;
+        }
+    }
+    
+    createFrostParticles() {
+        // Create frost particles around the frozen enemy
+        const particleCount = 10;
+        const particles = new THREE.Group();
+        
+        for (let i = 0; i < particleCount; i++) {
+            const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0xaaddff,
+                transparent: true,
+                opacity: 0.7
+            });
+            
+            const particle = new THREE.Mesh(geometry, material);
+            
+            // Random position around enemy
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 1.0;
+            const height = Math.random() * 2;
+            
+            particle.position.set(
+                this.mesh.position.x + Math.cos(angle) * radius,
+                this.mesh.position.y + height,
+                this.mesh.position.z + Math.sin(angle) * radius
+            );
+            
+            // Random upward velocity
+            particle.userData.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 0.2,
+                Math.random() * 0.3 + 0.1,
+                (Math.random() - 0.5) * 0.2
+            );
+            
+            particles.add(particle);
+        }
+        
+        this.scene.add(particles);
+        
+        // Animate and remove after 1 second
+        const startTime = Date.now();
+        
+        const animateParticles = () => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            
+            if (elapsed < 1) {
+                // Update each particle
+                particles.children.forEach(particle => {
+                    // Move by velocity
+                    particle.position.add(particle.userData.velocity);
+                    
+                    // Fade out
+                    particle.material.opacity = 0.7 * (1 - elapsed);
+                    
+                    // Scale down
+                    const scale = 1 - elapsed * 0.5;
+                    particle.scale.set(scale, scale, scale);
+                });
+                
+                requestAnimationFrame(animateParticles);
+            } else {
+                // Remove particles when done
+                this.scene.remove(particles);
+                particles.children.forEach(particle => {
+                    particle.geometry.dispose();
+                    particle.material.dispose();
+                });
+            }
+        };
+        
+        animateParticles();
     }
 } 

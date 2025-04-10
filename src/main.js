@@ -1,12 +1,18 @@
 import * as THREE from 'three';
 import { GameManager } from './game/GameManager.js';
+import { StartMenu } from './game/ui/StartMenu.js';
+
+// Set document body style to black
+document.body.style.backgroundColor = '#000000';
+document.body.style.margin = '0';
+document.body.style.overflow = 'hidden';
 
 // Scene setup
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+scene.background = new THREE.Color(0x000000); // Black background (changed from sky blue)
 
-// Add fog for a more immersive feeling
-scene.fog = new THREE.FogExp2(0x87CEEB, 0.01);
+// Add fog for a more immersive feeling - disabled for menu
+scene.fog = null; // Removed fog to ensure clean black background
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -97,8 +103,83 @@ ground2.position.x = groundSize; // Position it to the right of the original gro
 ground2.receiveShadow = true;
 scene.add(ground2);
 
-// Initialize game manager
-const gameManager = new GameManager(scene, camera);
+// Initially hide ground objects while in menu
+ground.visible = false;
+ground2.visible = false;
+
+// Game state
+let gameManager = null;
+let isGameStarted = false;
+
+// Initialize start menu
+const startMenu = new StartMenu(scene, camera);
+startMenu.onStartGame = startGame;
+
+// Function to clear scene for menu
+function clearSceneForMenu() {
+    // Hide all scene objects except for the essential ones
+    scene.traverse(object => {
+        // Keep only camera, lights and menu container visible
+        if (object instanceof THREE.Mesh && 
+            !object.userData.isMenuElement && 
+            object !== ground && 
+            object !== ground2) {
+            object.visible = false;
+        }
+    });
+    
+    // Ensure ground objects are hidden
+    ground.visible = false;
+    ground2.visible = false;
+    
+    // Set black background
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = null;
+}
+
+// Function to start the game
+function startGame() {
+    isGameStarted = true;
+    
+    // Show scene objects
+    scene.traverse(object => {
+        if (object instanceof THREE.Mesh && !object.userData.isMenuElement) {
+            object.visible = true;
+        }
+    });
+    
+    // Show ground objects during gameplay
+    ground.visible = true;
+    ground2.visible = true;
+    
+    // Change background back to sky blue for gameplay
+    scene.background = new THREE.Color(0x87CEEB);
+    scene.fog = new THREE.FogExp2(0x87CEEB, 0.01);
+    
+    // Initialize game manager
+    gameManager = new GameManager(scene, camera);
+    
+    // Set up return to menu callback
+    gameManager.onReturnToMenu = returnToMenu;
+    
+    // Add event listeners for camera control
+    setupCameraControls();
+}
+
+// Function to return to the menu
+function returnToMenu() {
+    isGameStarted = false;
+    gameManager = null;
+    
+    // Clear scene for menu
+    clearSceneForMenu();
+    
+    // Show the start menu again
+    startMenu.show();
+}
+
+// Initially clear scene for menu
+clearSceneForMenu();
 
 // Camera offset from player
 const cameraOffset = new THREE.Vector3(0, 15, 10);
@@ -114,62 +195,70 @@ let isRightMouseDown = false;
 let lastMouseX = 0;
 
 // Add mouse control for camera rotation
-window.addEventListener('mousedown', (event) => {
-    if (event.button === 2) { // Right mouse button
-        isRightMouseDown = true;
-        lastMouseX = event.clientX;
-    }
-});
+function setupCameraControls() {
+    window.addEventListener('mousedown', (event) => {
+        if (event.button === 2) { // Right mouse button
+            isRightMouseDown = true;
+            lastMouseX = event.clientX;
+        }
+    });
 
-window.addEventListener('mouseup', (event) => {
-    if (event.button === 2) { // Right mouse button
-        isRightMouseDown = false;
-    }
-});
+    window.addEventListener('mouseup', (event) => {
+        if (event.button === 2) { // Right mouse button
+            isRightMouseDown = false;
+        }
+    });
 
-window.addEventListener('mousemove', (event) => {
-    if (isRightMouseDown) {
-        // Calculate mouse movement delta
-        const deltaX = event.clientX - lastMouseX;
-        // Update rotation angle based on mouse movement
-        // Reverse the sign to fix left/right direction
-        cameraRotationAngle += deltaX * 0.01;
-        lastMouseX = event.clientX;
-    }
-});
+    window.addEventListener('mousemove', (event) => {
+        if (isRightMouseDown && isGameStarted) {
+            // Calculate mouse movement delta
+            const deltaX = event.clientX - lastMouseX;
+            // Update rotation angle based on mouse movement
+            // Reverse the sign to fix left/right direction
+            cameraRotationAngle += deltaX * 0.01;
+            lastMouseX = event.clientX;
+        }
+    });
 
-// Prevent context menu on right click
-window.addEventListener('contextmenu', (event) => {
-    event.preventDefault();
-});
+    // Prevent context menu on right click
+    window.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
+    });
+}
 
 // Game loop
 function animate() {
     requestAnimationFrame(animate);
-    gameManager.update();
     
-    // Make camera follow the player with offset and smooth interpolation
-    const targetPosition = gameManager.hero.mesh.position.clone();
-    
-    // Calculate camera position based on rotation angle
-    const rotatedOffset = new THREE.Vector3(
-        Math.sin(cameraRotationAngle) * cameraOffset.z,
-        cameraOffset.y,
-        Math.cos(cameraRotationAngle) * cameraOffset.z
-    );
-    
-    const desiredCameraPosition = new THREE.Vector3(
-        targetPosition.x + rotatedOffset.x,
-        targetPosition.y + rotatedOffset.y,
-        targetPosition.z + rotatedOffset.z
-    );
-    
-    // Smoothly interpolate camera position
-    camera.position.lerp(desiredCameraPosition, cameraSmoothness);
-    
-    // Smoothly interpolate camera target
-    currentCameraTarget.lerp(targetPosition, cameraSmoothness);
-    camera.lookAt(currentCameraTarget);
+    if (isGameStarted && gameManager) {
+        gameManager.update();
+        
+        // Make camera follow the player with offset and smooth interpolation
+        const targetPosition = gameManager.hero.mesh.position.clone();
+        
+        // Calculate camera position based on rotation angle
+        const rotatedOffset = new THREE.Vector3(
+            Math.sin(cameraRotationAngle) * cameraOffset.z,
+            cameraOffset.y,
+            Math.cos(cameraRotationAngle) * cameraOffset.z
+        );
+        
+        const desiredCameraPosition = new THREE.Vector3(
+            targetPosition.x + rotatedOffset.x,
+            targetPosition.y + rotatedOffset.y,
+            targetPosition.z + rotatedOffset.z
+        );
+        
+        // Smoothly interpolate camera position
+        camera.position.lerp(desiredCameraPosition, cameraSmoothness);
+        
+        // Smoothly interpolate camera target
+        currentCameraTarget.lerp(targetPosition, cameraSmoothness);
+        camera.lookAt(currentCameraTarget);
+    } else if (!isGameStarted && startMenu) {
+        // Update start menu if game hasn't started
+        startMenu.update();
+    }
     
     renderer.render(scene, camera);
 }
@@ -181,5 +270,5 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Start the game
+// Start the game loop
 animate(); 

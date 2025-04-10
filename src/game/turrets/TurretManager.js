@@ -81,4 +81,25 @@ export class TurretManager {
         const now = Date.now();
         return Math.max(0, this.cooldownTime - (now - this.lastTurretTime));
     }
+    
+    cleanup() {
+        // Remove all turrets from the scene
+        for (let i = this.turrets.length - 1; i >= 0; i--) {
+            const turret = this.turrets[i];
+            if (turret.mesh && turret.mesh.parent) {
+                turret.mesh.parent.remove(turret.mesh);
+            }
+            
+            // Remove range indicators if they exist
+            if (turret.rangeIndicator && turret.rangeIndicator.parent) {
+                turret.rangeIndicator.parent.remove(turret.rangeIndicator);
+            }
+        }
+        
+        // Clear the turrets array
+        this.turrets = [];
+        
+        // Reset cooldown
+        this.cooldownRemaining = 0;
+    }
 } 

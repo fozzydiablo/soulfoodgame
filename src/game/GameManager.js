@@ -95,6 +95,186 @@ export class GameManager {
         if (this.inventory && typeof this.inventory.updateWearableItemStats === 'function') {
             this.inventory.updateWearableItemStats();
         }
+        
+        // Create menu button
+        this.createMenuButton();
+    }
+    
+    // Add a button to return to the main menu
+    createMenuButton() {
+        const menuButton = document.createElement('div');
+        menuButton.style.position = 'absolute';
+        menuButton.style.top = '10px';
+        menuButton.style.right = '10px';
+        menuButton.style.padding = '5px 10px';
+        menuButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        menuButton.style.color = 'white';
+        menuButton.style.borderRadius = '5px';
+        menuButton.style.cursor = 'pointer';
+        menuButton.style.fontFamily = 'Arial, sans-serif';
+        menuButton.style.fontSize = '14px';
+        menuButton.innerHTML = 'Menu';
+        menuButton.style.zIndex = '1000';
+        
+        // Add hover effect
+        menuButton.addEventListener('mouseover', () => {
+            menuButton.style.backgroundColor = 'rgba(50, 50, 50, 0.9)';
+        });
+        
+        menuButton.addEventListener('mouseout', () => {
+            menuButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        });
+        
+        // Add click event to open menu modal
+        menuButton.addEventListener('click', () => {
+            this.openMenuModal();
+        });
+        
+        document.body.appendChild(menuButton);
+        this.menuButton = menuButton;
+    }
+    
+    openMenuModal() {
+        // Pause the game
+        this.pauseGame();
+        
+        // Create menu modal
+        const menuModal = document.createElement('div');
+        menuModal.style.position = 'absolute';
+        menuModal.style.top = '50%';
+        menuModal.style.left = '50%';
+        menuModal.style.transform = 'translate(-50%, -50%)';
+        menuModal.style.width = '300px';
+        menuModal.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+        menuModal.style.color = 'white';
+        menuModal.style.padding = '20px';
+        menuModal.style.borderRadius = '10px';
+        menuModal.style.fontFamily = 'Arial, sans-serif';
+        menuModal.style.textAlign = 'center';
+        menuModal.style.zIndex = '2000';
+        
+        menuModal.innerHTML = `
+            <h2 style="color: #FFD700; margin-bottom: 20px;">Game Menu</h2>
+            <div id="resume-game" style="margin: 10px 0; padding: 10px; background-color: #444; border-radius: 5px; cursor: pointer;">Resume Game</div>
+            <div id="return-to-menu" style="margin: 10px 0; padding: 10px; background-color: #444; border-radius: 5px; cursor: pointer;">Return to Main Menu</div>
+        `;
+        
+        document.body.appendChild(menuModal);
+        
+        // Add event listeners
+        document.getElementById('resume-game').addEventListener('click', () => {
+            document.body.removeChild(menuModal);
+            this.resumeGame();
+        });
+        
+        document.getElementById('return-to-menu').addEventListener('click', () => {
+            document.body.removeChild(menuModal);
+            this.returnToMenu();
+        });
+        
+        // Add hover effects
+        const buttons = menuModal.querySelectorAll('div[id]');
+        buttons.forEach(button => {
+            button.addEventListener('mouseover', () => {
+                button.style.backgroundColor = '#666';
+            });
+            
+            button.addEventListener('mouseout', () => {
+                button.style.backgroundColor = '#444';
+            });
+        });
+    }
+    
+    returnToMenu() {
+        // Clean up game elements
+        this.cleanupGameElements();
+        
+        // Remove menu button
+        if (this.menuButton && this.menuButton.parentNode) {
+            this.menuButton.parentNode.removeChild(this.menuButton);
+        }
+        
+        // Trigger the onReturnToMenu callback if it exists
+        if (typeof this.onReturnToMenu === 'function') {
+            this.onReturnToMenu();
+        }
+    }
+    
+    cleanupGameElements() {
+        // Remove UI elements
+        this.ui.cleanup();
+        
+        // Remove all enemies
+        this.enemyManager.cleanup();
+        
+        // Remove all projectiles
+        this.projectileManager.cleanup();
+        
+        // Remove all turrets
+        this.turretManager.cleanup();
+        
+        // Remove all items
+        this.itemManager.cleanup();
+        
+        // Remove the shop UI if it exists
+        if (this.shopManager) {
+            this.shopManager.cleanup();
+        }
+        
+        // Remove hero
+        if (this.hero && this.hero.mesh) {
+            this.scene.remove(this.hero.mesh);
+        }
+        
+        // Remove menu button
+        if (this.menuButton && this.menuButton.parentNode) {
+            this.menuButton.parentNode.removeChild(this.menuButton);
+        }
+        
+        // Check for any remaining DOM elements that might have been missed
+        this.cleanupRemainingUIElements();
+    }
+    
+    cleanupRemainingUIElements() {
+        // Remove any DOM UI elements that might have been missed
+        const commonUISelectors = [
+            // Game UI elements
+            '.wave-notification',
+            '.notification',
+            '#next-wave-button',
+            // Controls and instructions
+            'div[style*="Controls:"]',
+            // Game over screen
+            '#game-over-screen',
+            // Shop UI elements
+            '#shop-container',
+            '#shop-close-button',
+            // Tooltips
+            '.tooltip',
+            // Any modal dialogs
+            'div[style*="modal"]',
+            'div[style*="Menu"]',
+            'div[style*="menu"]'
+        ];
+        
+        commonUISelectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(element => {
+                if (element && element.parentNode) {
+                    element.parentNode.removeChild(element);
+                }
+            });
+        });
+        
+        // Remove all divs positioned absolutely (likely UI elements)
+        const absoluteDivs = document.querySelectorAll('div[style*="position: absolute"]');
+        absoluteDivs.forEach(div => {
+            // Only remove UI-like elements, not critical page elements
+            if (div.id !== 'app' && !div.classList.contains('essential') && 
+                div.parentNode && div.parentNode === document.body) {
+                div.parentNode.removeChild(div);
+            }
+        });
     }
     
     setupKeyListeners() {
@@ -198,21 +378,84 @@ export class GameManager {
         
         for (let i = projectiles.length - 1; i >= 0; i--) {
             const projectile = projectiles[i];
+            
+            // Skip invalid projectiles
+            if (!projectile) {
+                continue;
+            }
+            
             if (projectile.isPlayerProjectile) {
+                // Handle area effect projectiles (like Fireball)
+                if (projectile.areaEffect && projectile.isDestroyed) {
+                    // Skip already processed area projectiles
+                    continue;
+                }
+                
+                let hitEnemy = false;
+                
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     const enemy = enemies[j];
                     if (projectile.checkCollision(enemy)) {
-                        // Use hero's damage stat instead of hardcoded value
-                        const heroDamage = this.hero.stats.damage;
-                        enemy.takeDamage(heroDamage);
+                        // Use projectile's damage or hero's damage stat
+                        const damageAmount = projectile.damage || this.hero.stats.damage;
+                        enemy.takeDamage(damageAmount);
                         
                         // Award score if enemy dies
                         if (enemy.stats.health <= 0) {
                             this.awardScoreForEnemy(enemy);
                         }
                         
-                        projectile.destroy();
-                        break; // Projectile can only hit one enemy
+                        // If it's an area effect projectile, destroy it but don't break
+                        // This will trigger the explosion effect in the projectile's destroy method
+                        if (projectile.areaEffect) {
+                            projectile.destroy();
+                            
+                            // Apply area damage to nearby enemies
+                            const radius = projectile.areaRadius || 3;
+                            const position = projectile.mesh ? projectile.mesh.position.clone() : enemy.mesh.position.clone();
+                            
+                            // Apply area damage to all enemies in radius
+                            enemies.forEach(nearbyEnemy => {
+                                if (nearbyEnemy !== enemy) { // Skip the directly hit enemy
+                                    const distance = nearbyEnemy.mesh.position.distanceTo(position);
+                                    if (distance <= radius) {
+                                        // Damage falls off with distance
+                                        const falloff = 1 - (distance / radius);
+                                        const areaDamage = Math.ceil(projectile.damage * falloff);
+                                        
+                                        nearbyEnemy.takeDamage(areaDamage);
+                                        
+                                        // Award score if enemy dies
+                                        if (nearbyEnemy.stats.health <= 0) {
+                                            this.awardScoreForEnemy(nearbyEnemy);
+                                        }
+                                    }
+                                }
+                            });
+                            
+                            hitEnemy = true;
+                            break;
+                        } else {
+                            // Regular projectile - destroy and break loop
+                            projectile.destroy();
+                            hitEnemy = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // If projectile hit an obstacle or went out of bounds
+                if (!hitEnemy && !projectile.isDestroyed) {
+                    // Check if we should detonate area effect projectiles on obstacles too
+                    if (projectile.areaEffect && projectile.mesh) {
+                        // Check if the projectile hit the ground or walls
+                        // This is a simplified check - ideally you'd check against actual
+                        // collision geometry in your scene
+                        if (Math.abs(projectile.mesh.position.x) > 29 || 
+                            Math.abs(projectile.mesh.position.z) > 29 ||
+                            projectile.mesh.position.y < 0.5) {
+                            projectile.destroy();
+                        }
                     }
                 }
             } else {

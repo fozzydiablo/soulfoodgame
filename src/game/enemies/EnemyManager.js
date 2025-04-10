@@ -298,4 +298,22 @@ export class EnemyManager {
         
         animateParticles();
     }
+    
+    cleanup() {
+        // Remove all enemies from the scene
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            const enemy = this.enemies[i];
+            if (enemy.mesh && enemy.mesh.parent) {
+                enemy.mesh.parent.remove(enemy.mesh);
+            }
+            
+            // Remove health bars if they exist
+            if (enemy.healthBar && enemy.healthBar.parent) {
+                enemy.healthBar.parent.remove(enemy.healthBar);
+            }
+        }
+        
+        // Clear the enemies array
+        this.enemies = [];
+    }
 } 
