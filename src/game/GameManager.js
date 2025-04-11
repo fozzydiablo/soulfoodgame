@@ -37,7 +37,7 @@ export class GameManager {
         this.hero = new Hero(scene, this, camera);
         
         // UI needs to be initialized before TurretManager 
-        this.ui = new UI();
+        this.ui = new UI(this);
         
         // Initialize turret manager after UI
         this.turretManager = new TurretManager(scene, this);

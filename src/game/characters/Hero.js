@@ -648,7 +648,10 @@ export class Hero {
             
             // Only update UI if regeneration is significant
             if (Math.floor(this.stats.mana) > Math.floor(this.stats.mana - regenAmount)) {
-                // The UI update will happen in gameManager.update() which calls updatePlayerStats
+                // Directly update the mana display
+                if (this.gameManager.ui) {
+                    this.gameManager.ui.updateMana(this.stats.mana, this.stats.maxMana);
+                }
             }
         }
     }

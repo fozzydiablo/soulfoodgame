@@ -247,6 +247,10 @@ export class Item {
                             hero.stats.mana + value,
                             hero.stats.maxMana
                         );
+                        // Directly update mana display
+                        if (gameManager.ui) {
+                            gameManager.ui.updateMana(hero.stats.mana, hero.stats.maxMana);
+                        }
                         break;
                     case 'healthRegen':
                         hero.stats.healthRegen += value;
