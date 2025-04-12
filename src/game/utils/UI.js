@@ -73,7 +73,34 @@ export class UI {
         this.manaDisplay = document.createElement('div');
         this.manaDisplay.id = 'mana-display';
         this.manaDisplay.style.height = '25px';
+        this.manaDisplay.style.marginBottom = '10px';
         this.barsContainer.appendChild(this.manaDisplay);
+        
+        // Create gold tracker
+        this.goldTrackerContainer = document.createElement('div');
+        this.goldTrackerContainer.style.display = 'flex';
+        this.goldTrackerContainer.style.alignItems = 'center';
+        this.goldTrackerContainer.style.height = '25px';
+        this.goldTrackerContainer.style.padding = '0 5px';
+        this.barsContainer.appendChild(this.goldTrackerContainer);
+        
+        // Gold coin icon
+        const goldIcon = document.createElement('div');
+        goldIcon.style.width = '20px';
+        goldIcon.style.height = '20px';
+        goldIcon.style.borderRadius = '50%';
+        goldIcon.style.background = 'radial-gradient(circle at 30% 30%, #FFD700, #B8860B)';
+        goldIcon.style.marginRight = '10px';
+        goldIcon.style.boxShadow = '0 0 5px rgba(255, 215, 0, 0.5)';
+        this.goldTrackerContainer.appendChild(goldIcon);
+        
+        // Gold amount text
+        this.goldAmountDisplay = document.createElement('div');
+        this.goldAmountDisplay.style.fontWeight = 'bold';
+        this.goldAmountDisplay.style.color = '#FFD700';
+        this.goldAmountDisplay.style.textShadow = '0 0 2px rgba(0, 0, 0, 0.8)';
+        this.goldAmountDisplay.style.fontSize = '16px'; // Slightly smaller text
+        this.goldTrackerContainer.appendChild(this.goldAmountDisplay);
         
         // Create wave counter in top center
         this.waveCounterContainer = document.createElement('div');
@@ -99,6 +126,9 @@ export class UI {
         
         // Initial update of wave counter
         this.updateWave(this.gameManager?.gameState?.wave || 0);
+        
+        // Initial update of gold
+        this.updateGold(this.gameManager?.gameState?.resources?.gold || 0);
         
         // Initial update of health and mana
         if (this.gameManager && this.gameManager.gameState) {
@@ -206,10 +236,10 @@ export class UI {
         modalBackdrop.style.justifyContent = 'center';
         modalBackdrop.style.alignItems = 'center';
         
-        // Create modal container
+        // Create modal container - make it wider to accommodate inventory
         const modalContainer = document.createElement('div');
-        modalContainer.style.width = '800px';
-        modalContainer.style.height = '500px';
+        modalContainer.style.width = '1000px';
+        modalContainer.style.height = '600px';
         modalContainer.style.backgroundColor = '#222222';
         modalContainer.style.borderRadius = '10px';
         modalContainer.style.boxShadow = '0 0 20px rgba(0, 0, 0, 0.8)';
@@ -219,9 +249,9 @@ export class UI {
         modalContainer.style.border = '3px solid #444444';
         modalContainer.style.position = 'relative'; // Ensure proper stacking context
         
-        // Create left side for 3D model view
+        // Create left side for 3D model view - make it smaller
         const modelViewContainer = document.createElement('div');
-        modelViewContainer.style.width = '50%';
+        modelViewContainer.style.width = '30%';
         modelViewContainer.style.height = '100%';
         modelViewContainer.style.backgroundColor = '#1a1a1a';
         modelViewContainer.style.display = 'flex';
@@ -264,18 +294,32 @@ export class UI {
         
         modelViewContainer.appendChild(modelCanvas);
         
-        // Create right side for stats
+        // Create middle section for stats
         const statsContainer = document.createElement('div');
-        statsContainer.style.width = '50%';
+        statsContainer.style.width = '35%';
         statsContainer.style.height = '100%';
         statsContainer.style.padding = '20px';
         statsContainer.style.boxSizing = 'border-box';
         statsContainer.style.overflowY = 'auto';
         statsContainer.style.color = 'white';
         statsContainer.style.fontFamily = 'Arial, sans-serif';
+        statsContainer.style.borderRight = '2px solid #444444';
         
         // Populate stats
         this.populatePlayerStats(statsContainer);
+        
+        // Create right side for inventory
+        const inventoryContainer = document.createElement('div');
+        inventoryContainer.style.width = '35%';
+        inventoryContainer.style.height = '100%';
+        inventoryContainer.style.padding = '20px';
+        inventoryContainer.style.boxSizing = 'border-box';
+        inventoryContainer.style.overflowY = 'auto';
+        inventoryContainer.style.color = 'white';
+        inventoryContainer.style.fontFamily = 'Arial, sans-serif';
+        
+        // Populate inventory
+        this.populatePlayerInventory(inventoryContainer);
         
         // Create close button
         const closeButton = document.createElement('div');
@@ -318,6 +362,7 @@ export class UI {
         // Add components to modal
         modalContainer.appendChild(modelViewContainer);
         modalContainer.appendChild(statsContainer);
+        modalContainer.appendChild(inventoryContainer);
         modalContainer.appendChild(closeButton);
         modalBackdrop.appendChild(modalContainer);
         
@@ -982,8 +1027,21 @@ export class UI {
     }
     
     updateGold(gold) {
-        // This method is retained but does nothing to prevent errors
-        return;
+        if (!this.goldAmountDisplay) return;
+        
+        // Format the gold amount with commas for thousands
+        const formattedGold = gold.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        this.goldAmountDisplay.textContent = formattedGold;
+        
+        // Add pulse effect when gold changes
+        this.goldAmountDisplay.style.transform = 'scale(1.2)';
+        this.goldAmountDisplay.style.transition = 'transform 0.2s ease-out';
+        
+        setTimeout(() => {
+            if (this.goldAmountDisplay) {
+                this.goldAmountDisplay.style.transform = 'scale(1)';
+            }
+        }, 200);
     }
     
     createTooltip(content, x, y) {
@@ -1063,5 +1121,362 @@ export class UI {
         
         // Remove any tooltips
         this.removeTooltip();
+    }
+    
+    populatePlayerInventory(container) {
+        if (!this.gameManager || !this.gameManager.inventory) {
+            container.innerHTML = '<div style="text-align: center; padding: 20px;">No inventory data available</div>';
+            return;
+        }
+        
+        const inventory = this.gameManager.inventory;
+        
+        // Create header
+        const header = document.createElement('div');
+        header.style.fontSize = '24px';
+        header.style.fontWeight = 'bold';
+        header.style.marginBottom = '20px';
+        header.style.textAlign = 'center';
+        header.style.color = '#ffcc00';
+        header.style.borderBottom = '2px solid #ffcc00';
+        header.style.paddingBottom = '10px';
+        header.textContent = 'Inventory';
+        container.appendChild(header);
+        
+        // Create inventory sections
+        
+        // Items section (wearable items)
+        const itemsSection = document.createElement('div');
+        itemsSection.style.marginBottom = '25px';
+        
+        const itemsTitle = document.createElement('div');
+        itemsTitle.style.fontSize = '18px';
+        itemsTitle.style.fontWeight = 'bold';
+        itemsTitle.style.marginBottom = '10px';
+        itemsTitle.style.color = '#cccccc';
+        itemsTitle.style.borderBottom = '1px solid #444444';
+        itemsTitle.style.paddingBottom = '5px';
+        itemsTitle.textContent = 'Equipment';
+        itemsSection.appendChild(itemsTitle);
+        
+        // Create item slots grid
+        const itemSlotsGrid = document.createElement('div');
+        itemSlotsGrid.style.display = 'grid';
+        itemSlotsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        itemSlotsGrid.style.gap = '10px';
+        
+        // Add item slots
+        const { itemSlots } = inventory;
+        for (let i = 0; i < itemSlots.length; i++) {
+            const item = itemSlots[i];
+            const slot = this.createInventorySlot(item);
+            itemSlotsGrid.appendChild(slot);
+        }
+        
+        itemsSection.appendChild(itemSlotsGrid);
+        container.appendChild(itemsSection);
+        
+        // Consumables section
+        const consumablesSection = document.createElement('div');
+        consumablesSection.style.marginBottom = '25px';
+        
+        const consumablesTitle = document.createElement('div');
+        consumablesTitle.style.fontSize = '18px';
+        consumablesTitle.style.fontWeight = 'bold';
+        consumablesTitle.style.marginBottom = '10px';
+        consumablesTitle.style.color = '#cccccc';
+        consumablesTitle.style.borderBottom = '1px solid #444444';
+        consumablesTitle.style.paddingBottom = '5px';
+        consumablesTitle.textContent = 'Consumables';
+        consumablesSection.appendChild(consumablesTitle);
+        
+        // Create consumable slots grid
+        const consumableSlotsGrid = document.createElement('div');
+        consumableSlotsGrid.style.display = 'grid';
+        consumableSlotsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        consumableSlotsGrid.style.gap = '10px';
+        
+        // Add consumable slots
+        const { consumableSlots } = inventory;
+        for (let i = 0; i < consumableSlots.length; i++) {
+            const item = consumableSlots[i];
+            const slot = this.createInventorySlot(item);
+            consumableSlotsGrid.appendChild(slot);
+        }
+        
+        consumablesSection.appendChild(consumableSlotsGrid);
+        container.appendChild(consumablesSection);
+        
+        // Abilities section
+        const abilitiesSection = document.createElement('div');
+        
+        const abilitiesTitle = document.createElement('div');
+        abilitiesTitle.style.fontSize = '18px';
+        abilitiesTitle.style.fontWeight = 'bold';
+        abilitiesTitle.style.marginBottom = '10px';
+        abilitiesTitle.style.color = '#cccccc';
+        abilitiesTitle.style.borderBottom = '1px solid #444444';
+        abilitiesTitle.style.paddingBottom = '5px';
+        abilitiesTitle.textContent = 'Abilities';
+        abilitiesSection.appendChild(abilitiesTitle);
+        
+        // Create abilities slots grid
+        const abilitySlotsGrid = document.createElement('div');
+        abilitySlotsGrid.style.display = 'grid';
+        abilitySlotsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        abilitySlotsGrid.style.gap = '10px';
+        
+        // Add ability slots
+        const { abilitySlots } = inventory;
+        for (let i = 0; i < abilitySlots.length; i++) {
+            const item = abilitySlots[i];
+            const slot = this.createInventorySlot(item);
+            abilitySlotsGrid.appendChild(slot);
+        }
+        
+        abilitiesSection.appendChild(abilitySlotsGrid);
+        container.appendChild(abilitiesSection);
+    }
+    
+    createInventorySlot(item) {
+        const slot = document.createElement('div');
+        slot.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+        slot.style.border = '2px solid #444444';
+        slot.style.borderRadius = '5px';
+        slot.style.height = '60px';
+        slot.style.padding = '5px';
+        slot.style.display = 'flex';
+        slot.style.flexDirection = 'column';
+        slot.style.alignItems = 'center';
+        slot.style.justifyContent = 'center';
+        slot.style.position = 'relative';
+        slot.style.transition = 'all 0.2s ease';
+        
+        // Add hover effect
+        slot.addEventListener('mouseenter', () => {
+            slot.style.backgroundColor = 'rgba(255, 204, 0, 0.2)';
+            slot.style.border = '2px solid #ffcc00';
+            slot.style.transform = 'scale(1.05)';
+        });
+        
+        slot.addEventListener('mouseleave', () => {
+            slot.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+            slot.style.border = '2px solid #444444';
+            slot.style.transform = 'scale(1)';
+        });
+        
+        if (item) {
+            // Item color based on rarity
+            const rarityColors = {
+                common: '#aaaaaa',
+                uncommon: '#55aa55',
+                rare: '#5555ff',
+                epic: '#aa55aa',
+                legendary: '#ffaa00'
+            };
+            
+            const rarityColor = rarityColors[item.rarity] || '#aaaaaa';
+            
+            // Item icon/visual representation
+            const itemIcon = document.createElement('div');
+            itemIcon.style.width = '30px';
+            itemIcon.style.height = '30px';
+            itemIcon.style.backgroundColor = item.color || rarityColor;
+            itemIcon.style.borderRadius = '5px';
+            itemIcon.style.marginBottom = '5px';
+            
+            // Display icon based on type
+            const iconType = item.icon || 'default';
+            let iconContent = '?';
+            
+            switch (iconType) {
+                case 'sword':
+                    iconContent = '⚔️';
+                    break;
+                case 'shield':
+                    iconContent = '🛡️';
+                    break;
+                case 'heart':
+                    iconContent = '❤️';
+                    break;
+                case 'potion':
+                    iconContent = '🧪';
+                    break;
+                case 'bow':
+                    iconContent = '🏹';
+                    break;
+                case 'wand':
+                    iconContent = '🪄';
+                    break;
+                case 'boots':
+                    iconContent = '👢';
+                    break;
+                case 'amulet':
+                    iconContent = '📿';
+                    break;
+                default:
+                    iconContent = '?';
+                    break;
+            }
+            
+            itemIcon.style.display = 'flex';
+            itemIcon.style.justifyContent = 'center';
+            itemIcon.style.alignItems = 'center';
+            itemIcon.style.fontSize = '18px';
+            itemIcon.textContent = iconContent;
+            
+            // Item name
+            const itemName = document.createElement('div');
+            itemName.style.fontSize = '12px';
+            itemName.style.color = rarityColor;
+            itemName.style.whiteSpace = 'nowrap';
+            itemName.style.overflow = 'hidden';
+            itemName.style.textOverflow = 'ellipsis';
+            itemName.style.width = '100%';
+            itemName.style.textAlign = 'center';
+            itemName.textContent = item.name;
+            
+            slot.appendChild(itemIcon);
+            slot.appendChild(itemName);
+            
+            // Add tooltip on hover - more detailed version that matches bottom UI
+            slot.addEventListener('mouseenter', () => {
+                // Create tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'item-tooltip';
+                tooltip.style.position = 'absolute';
+                tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+                tooltip.style.color = 'white';
+                tooltip.style.padding = '10px';
+                tooltip.style.borderRadius = '5px';
+                tooltip.style.width = '200px';
+                tooltip.style.zIndex = '2500';
+                tooltip.style.pointerEvents = 'none';
+                tooltip.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+                tooltip.style.border = '1px solid #555';
+                tooltip.id = 'inventory-tooltip';
+                
+                // Get position of the slot
+                const slotRect = slot.getBoundingClientRect();
+                
+                // Position the tooltip above the slot
+                tooltip.style.bottom = `${window.innerHeight - slotRect.top + 5}px`;
+                tooltip.style.left = `${slotRect.left + slotRect.width / 2 - 100}px`;
+                
+                // Item name
+                const name = document.createElement('div');
+                name.style.fontSize = '16px';
+                name.style.fontWeight = 'bold';
+                name.style.color = '#ffcc00';
+                name.style.marginBottom = '5px';
+                name.textContent = item.name;
+                tooltip.appendChild(name);
+                
+                // Item description
+                const desc = document.createElement('div');
+                desc.style.fontSize = '14px';
+                desc.style.color = '#cccccc';
+                desc.style.marginBottom = '5px';
+                desc.textContent = item.description || 'No description';
+                tooltip.appendChild(desc);
+                
+                // Item stats
+                if (item.stats) {
+                    const stats = document.createElement('div');
+                    stats.style.fontSize = '13px';
+                    stats.style.color = '#aaffaa';
+                    stats.style.marginTop = '5px';
+                    
+                    Object.entries(item.stats).forEach(([key, value]) => {
+                        // Choose color based on stat type
+                        let statColor = '#aaffaa';
+                        if (key.includes('damage')) statColor = '#ff6666';
+                        if (key.includes('health')) statColor = '#66cc66';
+                        if (key.includes('mana')) statColor = '#6666ff';
+                        if (key.includes('speed')) statColor = '#66ccff';
+                        if (key.includes('armor')) statColor = '#ddcc77';
+                        
+                        const statText = document.createElement('div');
+                        // Format stat name
+                        let formattedStat = key.replace(/([A-Z])/g, ' $1').toLowerCase();
+                        formattedStat = formattedStat.charAt(0).toUpperCase() + formattedStat.slice(1);
+                        
+                        // Format values with + sign for positive values
+                        const formattedValue = value > 0 ? `+${value}` : value;
+                        
+                        statText.innerHTML = `${formattedStat}: <span style="color: ${statColor};">${formattedValue}</span>`;
+                        stats.appendChild(statText);
+                    });
+                    
+                    tooltip.appendChild(stats);
+                }
+                
+                // Rarity
+                if (item.rarity) {
+                    const rarity = document.createElement('div');
+                    rarity.style.fontSize = '12px';
+                    rarity.style.marginTop = '5px';
+                    
+                    // Set color based on rarity
+                    switch(item.rarity) {
+                        case 'uncommon':
+                            rarity.style.color = '#00cc00';
+                            break;
+                        case 'rare':
+                            rarity.style.color = '#0066ff';
+                            break;
+                        case 'epic':
+                            rarity.style.color = '#aa00ff';
+                            break;
+                        case 'legendary':
+                            rarity.style.color = '#ff9900';
+                            break;
+                        default:
+                            rarity.style.color = '#aaaaaa';
+                    }
+                    
+                    rarity.textContent = `${item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)}`;
+                    tooltip.appendChild(rarity);
+                }
+                
+                // Type
+                if (item.type) {
+                    const typeElem = document.createElement('div');
+                    typeElem.style.fontSize = '12px';
+                    typeElem.style.color = '#aaaaaa';
+                    typeElem.style.marginTop = '3px';
+                    typeElem.textContent = `Type: ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}`;
+                    tooltip.appendChild(typeElem);
+                }
+                
+                // Consumable indicator
+                if (item.consumable) {
+                    const consumable = document.createElement('div');
+                    consumable.style.fontSize = '12px';
+                    consumable.style.color = '#ff5555';
+                    consumable.style.marginTop = '3px';
+                    consumable.textContent = 'Consumable - used once';
+                    tooltip.appendChild(consumable);
+                }
+                
+                document.body.appendChild(tooltip);
+            });
+            
+            slot.addEventListener('mouseleave', () => {
+                const tooltip = document.getElementById('inventory-tooltip');
+                if (tooltip) {
+                    document.body.removeChild(tooltip);
+                }
+            });
+        } else {
+            // Empty slot
+            const emptyText = document.createElement('div');
+            emptyText.style.color = '#555555';
+            emptyText.style.fontSize = '12px';
+            emptyText.textContent = 'Empty';
+            slot.appendChild(emptyText);
+        }
+        
+        return slot;
     }
 } 

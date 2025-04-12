@@ -135,11 +135,17 @@ export class GameManager {
     }
     
     openMenuModal() {
+        // Check if a menu is already open
+        if (document.querySelector('div[style*="z-index: 2000"]')) {
+            return; // Don't open another menu if one already exists
+        }
+        
         // Pause the game
         this.pauseGame();
         
         // Create menu modal
         const menuModal = document.createElement('div');
+        menuModal.id = 'game-menu-modal';
         menuModal.style.position = 'absolute';
         menuModal.style.top = '50%';
         menuModal.style.left = '50%';
@@ -163,12 +169,11 @@ export class GameManager {
         
         // Add event listeners
         document.getElementById('resume-game').addEventListener('click', () => {
-            document.body.removeChild(menuModal);
-            this.resumeGame();
+            this.closeMenuModal();
         });
         
         document.getElementById('return-to-menu').addEventListener('click', () => {
-            document.body.removeChild(menuModal);
+            this.closeMenuModal();
             this.returnToMenu();
         });
         
@@ -183,6 +188,14 @@ export class GameManager {
                 button.style.backgroundColor = '#444';
             });
         });
+    }
+    
+    closeMenuModal() {
+        const menuModal = document.getElementById('game-menu-modal');
+        if (menuModal && menuModal.parentNode) {
+            menuModal.parentNode.removeChild(menuModal);
+        }
+        this.resumeGame();
     }
     
     returnToMenu() {
@@ -292,6 +305,22 @@ export class GameManager {
                     // Deploy turret when the T key is pressed (if ability is in inventory)
                     this.tryDeployTurret();
                     break;
+                case 'Escape':
+                    // For Escape key, we want to first check if there are menus open
+                    // and close them if there are
+                    const menuClosed = this.closeAnyOpenMenu();
+                    
+                    // If no menu was closed, we can open the game menu
+                    if (!menuClosed) {
+                        // Make sure the shop UI is not visible before opening menu
+                        const shopUI = document.getElementById('shop-ui');
+                        const shopVisible = shopUI && (shopUI.style.display !== 'none');
+                        
+                        if (!shopVisible) {
+                            this.openMenuModal();
+                        }
+                    }
+                    break;
             }
         });
         
@@ -301,6 +330,45 @@ export class GameManager {
                 this.lastKeyPressed = '';
             }
         });
+    }
+    
+    closeAnyOpenMenu() {
+        // Check for game menu
+        const gameMenu = document.getElementById('game-menu-modal');
+        if (gameMenu) {
+            this.closeMenuModal();
+            return true;
+        }
+        
+        // Check for any shop UI by looking for containers with certain IDs or classes
+        const shopUI = document.getElementById('shop-ui');
+        if (shopUI && shopUI.style.display !== 'none') {
+            // Try to close the shop through the shop manager
+            if (this.shopManager && this.shopManager.ui && 
+                typeof this.shopManager.ui.hide === 'function') {
+                this.shopManager.ui.hide();
+                // Set isShopActive to false when shop is closed using Escape key
+                this.shopManager.isShopActive = false;
+            } else if (shopUI.parentNode) {
+                // Direct removal if needed
+                shopUI.parentNode.removeChild(shopUI);
+                if (this.shopManager) {
+                    this.shopManager.isShopActive = false;
+                }
+            }
+            return true;
+        }
+        
+        // Check for player info modal
+        const playerInfoModal = document.querySelector('div[style*="z-index: 2000"]');
+        if (playerInfoModal && playerInfoModal.id !== 'game-menu-modal') {
+            playerInfoModal.parentNode.removeChild(playerInfoModal);
+            this.resumeGame();
+            return true;
+        }
+        
+        // No menus were found open
+        return false;
     }
     
     setupMouseListeners() {
@@ -625,6 +693,14 @@ export class GameManager {
         } else {
             // Notify player they don't have the ability
             this.ui.showNotification("You don't have the Deploy Turret ability!", 2000);
+        }
+    }
+    
+    togglePause() {
+        if (this.gameState.isPaused) {
+            this.resumeGame();
+        } else {
+            this.pauseGame();
         }
     }
 } 

@@ -14,9 +14,6 @@ export class Inventory {
         this.activeConsumableSlot = 0;
         this.activeAbilitySlot = 0;
         
-        // Currently active inventory tab (for UI display)
-        this.activeInventoryType = 'items'; // 'items', 'consumables', or 'abilities'
-        
         // Create UI
         this.createUI();
         
@@ -34,7 +31,7 @@ export class Inventory {
         this.container.style.bottom = '10px';
         this.container.style.left = '50%';
         this.container.style.transform = 'translateX(-50%)';
-        this.container.style.width = '600px';
+        this.container.style.width = '450px'; // Reduced width after removing items section
         this.container.style.padding = '10px';
         this.container.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
         this.container.style.borderRadius = '5px';
@@ -43,86 +40,84 @@ export class Inventory {
         this.container.style.flexDirection = 'column';
         this.container.style.gap = '5px';
         
-        // Create tabs for different inventory types
-        this.tabsContainer = document.createElement('div');
-        this.tabsContainer.style.display = 'flex';
-        this.tabsContainer.style.justifyContent = 'center';
-        this.tabsContainer.style.gap = '5px';
-        this.tabsContainer.style.marginBottom = '5px';
+        // Create header labels for each inventory type
+        const headerContainer = document.createElement('div');
+        headerContainer.style.display = 'flex';
+        headerContainer.style.justifyContent = 'center';
+        headerContainer.style.gap = '10px';
+        headerContainer.style.width = '100%';
         
-        // Create tabs for each inventory type
+        // Create labels for each inventory type
         const inventoryTypes = [
-            { id: 'items', label: 'ITEMS (6)', key: 'Z' },
-            { id: 'consumables', label: 'CONSUMABLES (2)', key: 'X' },
-            { id: 'abilities', label: 'ABILITIES (4)', key: 'C' }
+            { id: 'consumables', label: 'CONSUMABLES', width: '140px' },
+            { id: 'abilities', label: 'ABILITIES', width: '280px' }
         ];
         
-        this.tabs = {};
+        this.sectionLabels = {};
         
         inventoryTypes.forEach(type => {
-            const tab = document.createElement('div');
-            tab.style.padding = '8px 15px';
-            tab.style.backgroundColor = type.id === this.activeInventoryType ? 'rgba(80, 80, 100, 0.8)' : 'rgba(40, 40, 50, 0.6)';
-            tab.style.borderRadius = '5px';
-            tab.style.cursor = 'pointer';
-            tab.style.color = type.id === this.activeInventoryType ? '#fff' : '#aaa';
-            tab.style.fontWeight = 'bold';
-            tab.style.fontSize = '14px';
-            tab.style.transition = 'all 0.2s';
-            tab.textContent = `${type.label} [${type.key}]`;
-            tab.dataset.type = type.id;
+            const label = document.createElement('div');
+            label.style.padding = '8px 15px';
+            label.style.backgroundColor = 'rgba(40, 40, 50, 0.9)';
+            label.style.borderRadius = '5px 5px 0 0';
+            label.style.color = '#fff';
+            label.style.fontWeight = 'bold';
+            label.style.fontSize = '14px';
+            label.style.width = type.width;
+            label.style.textAlign = 'center';
+            label.textContent = type.label;
+            label.dataset.type = type.id;
             
-            tab.addEventListener('click', () => this.switchInventoryType(type.id));
-            tab.addEventListener('mouseover', () => {
-                if (type.id !== this.activeInventoryType) {
-                    tab.style.backgroundColor = 'rgba(60, 60, 80, 0.7)';
-                }
-            });
-            tab.addEventListener('mouseout', () => {
-                if (type.id !== this.activeInventoryType) {
-                    tab.style.backgroundColor = 'rgba(40, 40, 50, 0.6)';
-                }
-            });
-            
-            this.tabsContainer.appendChild(tab);
-            this.tabs[type.id] = tab;
+            headerContainer.appendChild(label);
+            this.sectionLabels[type.id] = label;
         });
         
-        // Create slots container
+        // Create slots container that holds all inventory types side by side
         this.slotsContainer = document.createElement('div');
         this.slotsContainer.style.display = 'flex';
-        this.slotsContainer.style.flexWrap = 'wrap';
         this.slotsContainer.style.justifyContent = 'center';
-        this.slotsContainer.style.gap = '5px';
+        this.slotsContainer.style.gap = '10px';
+        this.slotsContainer.style.width = '100%';
         
         // Create containers for each inventory type
         this.itemSlotsContainer = document.createElement('div');
         this.itemSlotsContainer.style.display = 'flex';
         this.itemSlotsContainer.style.gap = '5px';
         this.itemSlotsContainer.style.justifyContent = 'center';
+        this.itemSlotsContainer.style.width = '360px';
+        this.itemSlotsContainer.style.backgroundColor = 'rgba(20, 20, 30, 0.8)';
+        this.itemSlotsContainer.style.borderRadius = '0 0 5px 5px';
+        this.itemSlotsContainer.style.padding = '10px';
         
         this.consumableSlotsContainer = document.createElement('div');
-        this.consumableSlotsContainer.style.display = 'none'; // Hide initially
+        this.consumableSlotsContainer.style.display = 'flex';
         this.consumableSlotsContainer.style.gap = '5px';
         this.consumableSlotsContainer.style.justifyContent = 'center';
+        this.consumableSlotsContainer.style.width = '140px';
+        this.consumableSlotsContainer.style.backgroundColor = 'rgba(20, 20, 30, 0.8)';
+        this.consumableSlotsContainer.style.borderRadius = '0 0 5px 5px';
+        this.consumableSlotsContainer.style.padding = '10px';
         
         this.abilitySlotsContainer = document.createElement('div');
-        this.abilitySlotsContainer.style.display = 'none'; // Hide initially
+        this.abilitySlotsContainer.style.display = 'flex';
         this.abilitySlotsContainer.style.gap = '5px';
         this.abilitySlotsContainer.style.justifyContent = 'center';
+        this.abilitySlotsContainer.style.width = '280px';
+        this.abilitySlotsContainer.style.backgroundColor = 'rgba(20, 20, 30, 0.8)';
+        this.abilitySlotsContainer.style.borderRadius = '0 0 5px 5px';
+        this.abilitySlotsContainer.style.padding = '10px';
         
         // Create inventory slots for each type
         this.itemSlotElements = this.createSlots(this.itemSlotsContainer, this.itemSlots.length, 'item');
         this.consumableSlotElements = this.createSlots(this.consumableSlotsContainer, this.consumableSlots.length, 'consumable');
         this.abilitySlotElements = this.createSlots(this.abilitySlotsContainer, this.abilitySlots.length, 'ability');
         
-        // Add all slot containers to the main slots container
-        this.slotsContainer.appendChild(this.itemSlotsContainer);
+        // Add slot containers to the main slots container (excluding items)
         this.slotsContainer.appendChild(this.consumableSlotsContainer);
         this.slotsContainer.appendChild(this.abilitySlotsContainer);
         
         // Add components to main container
-        this.container.appendChild(this.tabsContainer);
+        this.container.appendChild(headerContainer);
         this.container.appendChild(this.slotsContainer);
         
         // Add to document
@@ -139,8 +134,19 @@ export class Inventory {
         
         for (let i = 0; i < count; i++) {
             const slot = document.createElement('div');
-            slot.style.width = '80px';
-            slot.style.height = '80px';
+            
+            // Adjust size based on type
+            if (type === 'item') {
+                slot.style.width = '55px';
+                slot.style.height = '55px';
+            } else if (type === 'consumable') {
+                slot.style.width = '50px';
+                slot.style.height = '50px';
+            } else if (type === 'ability') {
+                slot.style.width = '55px';
+                slot.style.height = '55px';
+            }
+            
             slot.style.backgroundColor = 'rgba(50, 50, 70, 0.6)';
             slot.style.border = '2px solid #444';
             slot.style.borderRadius = '5px';
@@ -150,18 +156,41 @@ export class Inventory {
             slot.style.flexDirection = 'column';
             slot.style.position = 'relative';
             slot.style.cursor = 'pointer';
+            slot.style.transition = 'all 0.2s ease';
             slot.dataset.index = i;
             slot.dataset.type = type;
+            
+            // Add hover effect
+            slot.addEventListener('mouseenter', () => {
+                slot.style.border = '2px solid #ffcc00';
+                slot.style.backgroundColor = 'rgba(255, 204, 0, 0.2)';
+                slot.style.transform = 'scale(1.05)';
+            });
+            
+            slot.addEventListener('mouseleave', () => {
+                slot.style.border = '2px solid #444';
+                slot.style.backgroundColor = 'rgba(50, 50, 70, 0.6)';
+                slot.style.transform = 'scale(1)';
+            });
             
             // Add keybind indicator
             const keybind = document.createElement('div');
             keybind.style.position = 'absolute';
-            keybind.style.top = '3px';
-            keybind.style.right = '5px';
+            keybind.style.top = '2px';
+            keybind.style.right = '4px';
             keybind.style.color = '#aaa';
-            keybind.style.fontSize = '16px';
+            keybind.style.fontSize = '12px';
             keybind.style.fontWeight = 'bold';
-            keybind.textContent = `${i+1}`;
+            
+            // Set appropriate keybind text based on type
+            if (type === 'consumable') {
+                keybind.textContent = i === 0 ? 'Q' : 'E';
+            } else if (type === 'ability') {
+                keybind.textContent = i === 0 ? 'Z' : i === 1 ? 'X' : i === 2 ? 'C' : 'V';
+            } else {
+                keybind.textContent = `${i+1}`;
+            }
+            
             keybind.dataset.isKeybind = 'true';
             slot.appendChild(keybind);
             
@@ -183,31 +212,7 @@ export class Inventory {
         return slots;
     }
     
-    switchInventoryType(type) {
-        if (type === this.activeInventoryType) return;
-        
-        // Update active inventory type
-        this.activeInventoryType = type;
-        
-        // Update tab styles
-        Object.entries(this.tabs).forEach(([tabType, tab]) => {
-            if (tabType === type) {
-                tab.style.backgroundColor = 'rgba(80, 80, 100, 0.8)';
-                tab.style.color = '#fff';
-            } else {
-                tab.style.backgroundColor = 'rgba(40, 40, 50, 0.6)';
-                tab.style.color = '#aaa';
-            }
-        });
-        
-        // Show/hide appropriate slot containers
-        this.itemSlotsContainer.style.display = type === 'items' ? 'flex' : 'none';
-        this.consumableSlotsContainer.style.display = type === 'consumables' ? 'flex' : 'none';
-        this.abilitySlotsContainer.style.display = type === 'abilities' ? 'flex' : 'none';
-    }
-    
     updateActiveSlot(type) {
-        // Get the relevant slot elements and active slot index
         let slotElements, activeSlotIndex;
         
         if (type === 'item') {
@@ -223,42 +228,53 @@ export class Inventory {
             return;
         }
         
-        // Reset all slots
-        slotElements.forEach((slot, index) => {
-            if (index === activeSlotIndex) {
-                slot.style.border = '2px solid #ffcc00';
-                slot.style.boxShadow = '0 0 10px #ffcc00';
-            } else {
-                slot.style.border = '2px solid #444';
-                slot.style.boxShadow = 'none';
-            }
-        });
+        // Update section label only
+        if (this.sectionLabels && this.sectionLabels[type]) {
+            // Highlight the section label for the active type
+            this.sectionLabels[type].style.backgroundColor = 'rgba(80, 80, 100, 0.9)';
+        }
+        
+        // We no longer visually highlight the slots themselves
+        // The game state still tracks which slots are active, but we won't show it visually
     }
     
     handleKeyPress(event) {
-        // Check for inventory tab switching keys
-        if (event.key === 'z' || event.key === 'Z') {
-            this.switchInventoryType('items');
-            return;
-        } else if (event.key === 'x' || event.key === 'X') {
-            this.switchInventoryType('consumables');
-            return;
-        } else if (event.key === 'c' || event.key === 'C') {
-            this.switchInventoryType('abilities');
-            return;
+        // Item selection (1-6)
+        // Note: Items are still tracked internally even though they're not displayed in the bottom UI
+        // They are only shown in the player info menu
+        if (event.key >= '1' && event.key <= '6') {
+            const slotIndex = parseInt(event.key) - 1;
+            if (slotIndex < this.itemSlots.length) {
+                this.selectSlot(slotIndex, 'item');
+            }
         }
         
-        // Check for number keys 1-9 to select slots based on active inventory type
-        const key = parseInt(event.key);
-        if (!isNaN(key) && key >= 1) {
-            // Select slot based on active inventory
-            if (this.activeInventoryType === 'items' && key <= this.itemSlots.length) {
-                this.selectSlot(key - 1, 'item');
-            } else if (this.activeInventoryType === 'consumables' && key <= this.consumableSlots.length) {
-                this.selectSlot(key - 1, 'consumable');
-            } else if (this.activeInventoryType === 'abilities' && key <= this.abilitySlots.length) {
-                this.selectSlot(key - 1, 'ability');
-            }
+        // Consumable selection (Q-E)
+        if (event.key === 'q' || event.key === 'Q') {
+            this.selectSlot(0, 'consumable');
+        } else if (event.key === 'e' || event.key === 'E') {
+            this.selectSlot(1, 'consumable');
+        }
+        
+        // Ability selection (keys Z,X,C,V)
+        if (event.key === 'z' || event.key === 'Z') {
+            this.selectSlot(0, 'ability');
+        } else if (event.key === 'x' || event.key === 'X') {
+            this.selectSlot(1, 'ability');
+        } else if (event.key === 'c' || event.key === 'C') {
+            this.selectSlot(2, 'ability');
+        } else if (event.key === 'v' || event.key === 'V') {
+            this.selectSlot(3, 'ability');
+        }
+        
+        // Use consumable with F
+        if (event.key === 'f' || event.key === 'F') {
+            this.useActiveItem('consumable', true);
+        }
+        
+        // Use ability with R
+        if (event.key === 'r' || event.key === 'R') {
+            this.useActiveItem('ability', true);
         }
     }
     
@@ -618,7 +634,12 @@ export class Inventory {
             this.container.parentNode.removeChild(this.container);
         }
         
-        this.hideTooltip();
+        // Clear references
+        this.itemSlotElements = null;
+        this.consumableSlotElements = null;
+        this.abilitySlotElements = null;
+        this.sectionLabels = null;
+        this.container = null;
     }
     
     // New method to update player stats based on wearable items in inventory

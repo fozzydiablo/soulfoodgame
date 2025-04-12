@@ -411,6 +411,11 @@ export class ShopUI {
     escKeyListener = (e) => {
         if (e.key === 'Escape' && this.isVisible) {
             this.hide();
+            // Update the ShopManager's state when closing with ESC key
+            if (this.gameManager && this.gameManager.shopManager) {
+                this.gameManager.shopManager.isShopActive = false;
+            }
+            // Don't stop propagation - we want the event to bubble up
         }
     }
 } 
