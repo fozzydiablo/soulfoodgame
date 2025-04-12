@@ -483,29 +483,112 @@ export class Inventory {
     }
     
     useActiveItem(type) {
-        // Get the appropriate active slot and items array
-        let activeSlot, items;
+        let item, slots;
         
-        if (type === 'item') {
-            activeSlot = this.activeItemSlot;
-            items = this.itemSlots;
-        } else if (type === 'consumable') {
-            activeSlot = this.activeConsumableSlot;
-            items = this.consumableSlots;
+        if (type === 'consumable') {
+            slots = this.consumableSlots;
+            item = slots[this.activeConsumableSlot];
         } else if (type === 'ability') {
-            activeSlot = this.activeAbilitySlot;
-            items = this.abilitySlots;
+            slots = this.abilitySlots;
+            item = slots[this.activeAbilitySlot];
         } else {
-            return;
+            return false;
         }
         
-        const item = items[activeSlot];
-        if (item) {
-            if (item.use(this.gameManager)) {
-                // If item is consumed, remove it (only for consumables)
-                if (item.consumable) {
-                    this.removeItem(activeSlot, type);
-                }
+        if (!item) return false;
+        
+        // Use the item by calling its use function if it exists
+        if (typeof item.use === 'function') {
+            const success = item.use(this.gameManager);
+            
+            // If the item is used successfully and is a consumable
+            if (success && item.consumable) {
+                // Remove from inventory
+                this.removeItem(this.activeConsumableSlot, 'consumable');
+            }
+            
+            // If this is an ability with cooldown, update the cooldown UI
+            if (success && type === 'ability' && item.cooldown) {
+                // Store the last used time for cooldown tracking
+                item.lastUsed = Date.now();
+                
+                // Get the slot element to update
+                const slotElement = this.abilitySlotElements[this.activeAbilitySlot];
+                
+                // Start cooldown tracking
+                this.startAbilityCooldownTracking(this.activeAbilitySlot, item.cooldown);
+            }
+            
+            return success;
+        }
+        
+        return false;
+    }
+    
+    // Track and update ability cooldowns
+    startAbilityCooldownTracking(slotIndex, cooldownDuration) {
+        if (!this.gameManager || !this.gameManager.ui) return;
+        
+        const item = this.abilitySlots[slotIndex];
+        const slotElement = this.abilitySlotElements[slotIndex];
+        
+        if (!item || !slotElement) return;
+        
+        // Set initial cooldown state
+        this.gameManager.ui.updateAbilityCooldown(slotElement, cooldownDuration, cooldownDuration);
+        
+        // Start cooldown animation using requestAnimationFrame for smoother updates
+        const startTime = Date.now();
+        const endTime = startTime + (cooldownDuration * 1000);
+        
+        const updateCooldown = () => {
+            const now = Date.now();
+            const remaining = (endTime - now) / 1000; // Convert to seconds
+            
+            if (remaining <= 0) {
+                // Cooldown complete
+                this.gameManager.ui.completeAbilityCooldown(slotElement);
+            } else {
+                // Update the cooldown display
+                this.gameManager.ui.updateAbilityCooldown(slotElement, remaining, cooldownDuration);
+                
+                // Continue the animation
+                requestAnimationFrame(updateCooldown);
+            }
+        };
+        
+        // Start the animation
+        requestAnimationFrame(updateCooldown);
+    }
+    
+    // New function to check and update all ability cooldowns
+    updateAbilityCooldowns() {
+        if (!this.gameManager || !this.gameManager.ui) return;
+        
+        const now = Date.now();
+        
+        // Go through all ability slots
+        for (let i = 0; i < this.abilitySlots.length; i++) {
+            const ability = this.abilitySlots[i];
+            const slotElement = this.abilitySlotElements[i];
+            
+            if (!ability || !ability.cooldown || !ability.lastUsed) continue;
+            
+            // Calculate remaining cooldown
+            const elapsedTime = now - ability.lastUsed;
+            const cooldownTime = ability.cooldown * 1000;
+            const remainingTime = cooldownTime - elapsedTime;
+            
+            // If cooldown is still active, update the UI
+            if (remainingTime > 0) {
+                this.gameManager.ui.updateAbilityCooldown(
+                    slotElement, 
+                    remainingTime / 1000, // Convert to seconds
+                    ability.cooldown
+                );
+            } else if (remainingTime <= 0 && remainingTime > -1000) { 
+                // Only complete the cooldown if it just finished (prevent multiple flashes)
+                this.gameManager.ui.completeAbilityCooldown(slotElement);
             }
         }
     }
@@ -626,20 +709,24 @@ export class Inventory {
     }
     
     cleanup() {
-        // Remove event listeners
-        window.removeEventListener('keydown', this.handleKeyPress);
-        
-        // Remove UI elements
+        // Remove UI
         if (this.container && this.container.parentNode) {
             this.container.parentNode.removeChild(this.container);
         }
         
-        // Clear references
+        // Remove item slot elements references
         this.itemSlotElements = null;
         this.consumableSlotElements = null;
         this.abilitySlotElements = null;
-        this.sectionLabels = null;
-        this.container = null;
+        
+        // Remove event listeners
+        window.removeEventListener('keydown', this.handleKeyPress);
+    }
+    
+    // Update method called by the game loop
+    update() {
+        // Update ability cooldowns
+        this.updateAbilityCooldowns();
     }
     
     // New method to update player stats based on wearable items in inventory
@@ -695,8 +782,7 @@ export class Inventory {
         }
     }
     
-    // Reset any stat bonuses that might have been applied by wearable items
-    // This is called before reapplying the bonuses to avoid stacking
+    // Reset all wearable item stat bonuses
     resetWearableStatBonuses() {
         if (!this.gameManager || !this.gameManager.hero) return;
         

@@ -410,10 +410,15 @@ export class ShopUI {
     // Store the ESC key listener as a property so we can remove it later
     escKeyListener = (e) => {
         if (e.key === 'Escape' && this.isVisible) {
-            this.hide();
-            // Update the ShopManager's state when closing with ESC key
+            // Use the same method as when F key is pressed to close the shop
             if (this.gameManager && this.gameManager.shopManager) {
-                this.gameManager.shopManager.isShopActive = false;
+                this.gameManager.shopManager.toggleShop(false);
+            } else {
+                // Fallback to previous behavior
+                this.hide();
+                if (this.gameManager && this.gameManager.shopManager) {
+                    this.gameManager.shopManager.isShopActive = false;
+                }
             }
             // Don't stop propagation - we want the event to bubble up
         }

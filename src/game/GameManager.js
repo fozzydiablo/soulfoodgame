@@ -343,11 +343,13 @@ export class GameManager {
         // Check for any shop UI by looking for containers with certain IDs or classes
         const shopUI = document.getElementById('shop-ui');
         if (shopUI && shopUI.style.display !== 'none') {
-            // Try to close the shop through the shop manager
-            if (this.shopManager && this.shopManager.ui && 
+            // Use shopManager.toggleShop for consistent behavior with F key
+            if (this.shopManager) {
+                this.shopManager.toggleShop(false);
+            } else if (this.shopManager && this.shopManager.ui && 
                 typeof this.shopManager.ui.hide === 'function') {
+                // Fallback to old behavior
                 this.shopManager.ui.hide();
-                // Set isShopActive to false when shop is closed using Escape key
                 this.shopManager.isShopActive = false;
             } else if (shopUI.parentNode) {
                 // Direct removal if needed
@@ -416,6 +418,11 @@ export class GameManager {
         
         // Update item manager
         this.itemManager.update(delta);
+        
+        // Update inventory (for ability cooldowns)
+        if (this.inventory) {
+            this.inventory.update();
+        }
         
         // Update player stats in UI
         this.ui.updatePlayerStats(this.hero);

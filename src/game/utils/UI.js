@@ -589,98 +589,24 @@ export class UI {
     }
     
     createTurretIndicator() {
-        // Create turret ability container
-        const abilityContainer = document.createElement('div');
-        abilityContainer.style.position = 'absolute';
-        abilityContainer.style.bottom = '10px';
-        abilityContainer.style.right = '10px';
-        abilityContainer.style.width = '60px';
-        abilityContainer.style.height = '60px';
-        abilityContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        abilityContainer.style.borderRadius = '5px';
-        abilityContainer.style.display = 'flex';
-        abilityContainer.style.flexDirection = 'column';
-        abilityContainer.style.justifyContent = 'center';
-        abilityContainer.style.alignItems = 'center';
-        abilityContainer.style.padding = '5px';
+        // This method is intentionally empty to remove the turret ability indicator
+        // from the bottom right corner of the screen
         
-        // Create the ability icon
-        const abilityIcon = document.createElement('div');
-        abilityIcon.style.width = '40px';
-        abilityIcon.style.height = '40px';
-        abilityIcon.style.backgroundColor = '#00AAFF';
-        abilityIcon.style.borderRadius = '5px';
-        abilityIcon.style.display = 'flex';
-        abilityIcon.style.justifyContent = 'center';
-        abilityIcon.style.alignItems = 'center';
-        abilityIcon.style.color = 'white';
-        abilityIcon.style.fontWeight = 'bold';
-        abilityIcon.style.fontSize = '14px';
-        abilityIcon.innerHTML = '1';
-        abilityContainer.appendChild(abilityIcon);
-        
-        // Create cooldown text
-        const cooldownText = document.createElement('div');
-        cooldownText.style.color = 'white';
-        cooldownText.style.fontSize = '12px';
-        cooldownText.style.marginTop = '3px';
-        cooldownText.innerHTML = 'Ready';
-        abilityContainer.appendChild(cooldownText);
-        
-        // Create cooldown overlay
-        const cooldownOverlay = document.createElement('div');
-        cooldownOverlay.style.position = 'absolute';
-        cooldownOverlay.style.top = '5px';
-        cooldownOverlay.style.left = '5px';
-        cooldownOverlay.style.width = '40px';
-        cooldownOverlay.style.height = '40px';
-        cooldownOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        cooldownOverlay.style.borderRadius = '5px';
-        cooldownOverlay.style.display = 'none';
-        abilityContainer.appendChild(cooldownOverlay);
-        
-        // Add to document
-        document.body.appendChild(abilityContainer);
-        
-        // Store references
-        this.turretAbilityContainer = abilityContainer;
-        this.turretAbilityIcon = abilityIcon;
-        this.turretCooldownText = cooldownText;
-        this.turretCooldownOverlay = cooldownOverlay;
+        // Set these to null to prevent errors in other methods that might try to use them
+        this.turretAbilityContainer = null;
+        this.turretAbilityIcon = null;
+        this.turretCooldownText = null;
+        this.turretCooldownOverlay = null;
     }
     
     updateTurretCooldown(remainingSeconds) {
-        if (!this.turretCooldownText || !this.turretCooldownOverlay) return;
-        
-        // Update cooldown text
-        this.turretCooldownText.innerHTML = `${remainingSeconds}s`;
-        
-        // Show cooldown overlay
-        this.turretCooldownOverlay.style.display = 'block';
-        
-        // Calculate fill percentage (100% at start of cooldown, 0% at end)
-        const percentage = (remainingSeconds / 20) * 100; // 20 is the total cooldown time
-        
-        // Set height of overlay based on remaining cooldown
-        this.turretCooldownOverlay.style.height = `${percentage}%`;
-        this.turretCooldownOverlay.style.top = `${5 + (40 - (percentage * 40 / 100))}px`;
+        // Do nothing - turret indicator has been removed
+        return;
     }
     
     updateTurretCooldownComplete() {
-        if (!this.turretCooldownText || !this.turretCooldownOverlay) return;
-        
-        // Reset cooldown display
-        this.turretCooldownText.innerHTML = 'Ready';
-        this.turretCooldownOverlay.style.display = 'none';
-        
-        // Flash the icon to indicate it's ready
-        this.turretAbilityIcon.style.backgroundColor = '#00FF00'; // Bright green
-        
-        setTimeout(() => {
-            if (this.turretAbilityIcon) {
-                this.turretAbilityIcon.style.backgroundColor = '#00AAFF'; // Back to normal blue
-            }
-        }, 300);
+        // Do nothing - turret indicator has been removed
+        return;
     }
     
     updateHealth(health, maxHealth) {
@@ -828,26 +754,22 @@ export class UI {
     showWaveCompletedNotification() {
         const notification = document.createElement('div');
         notification.style.position = 'absolute';
-        notification.style.top = '50%';
+        notification.style.top = '80px'; // Increased from 60px to create a gap with the wave indicator
         notification.style.left = '50%';
-        notification.style.transform = 'translate(-50%, -50%)';
+        notification.style.transform = 'translateX(-50%)';
         notification.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
         notification.style.color = '#FFFF00'; // Yellow
         notification.style.fontFamily = 'Arial, sans-serif';
-        notification.style.fontSize = '40px';
-        notification.style.padding = '30px';
-        notification.style.borderRadius = '15px';
+        notification.style.fontSize = '32px';
+        notification.style.padding = '15px 30px';
+        notification.style.borderRadius = '10px';
         notification.style.textAlign = 'center';
         notification.style.zIndex = '100';
         notification.style.opacity = '0';
         notification.style.transition = 'opacity 0.8s';
-        notification.style.boxShadow = '0 0 30px rgba(255, 255, 0, 0.5)';
+        notification.style.boxShadow = '0 0 20px rgba(255, 255, 0, 0.5)';
         
-        notification.innerHTML = `
-            <div style="font-size: 48px; margin-bottom: 15px;">Wave Completed!</div>
-            <div style="font-size: 28px; color: #DDDDDD;">You've been transported to the shop area</div>
-            <div style="font-size: 24px; color: #AAAAAA; margin-top: 20px;">Find the glowing blue text on the ground to start the next wave</div>
-        `;
+        notification.innerHTML = 'Wave Completed!';
         
         document.body.appendChild(notification);
         
@@ -862,49 +784,11 @@ export class UI {
             setTimeout(() => {
                 document.body.removeChild(notification);
             }, 800);
-        }, 4000);
+        }, 3000);
     }
     
     showNextWaveButtonHint() {
-        // Check if hint already exists
-        if (document.getElementById('next-wave-hint')) {
-            return;
-        }
-        
-        const hint = document.createElement('div');
-        hint.id = 'next-wave-hint';
-        hint.style.position = 'fixed';
-        hint.style.bottom = '80px';
-        hint.style.right = '20px';
-        hint.style.backgroundColor = 'rgba(0, 0, 255, 0.7)';
-        hint.style.color = 'white';
-        hint.style.padding = '10px 15px';
-        hint.style.borderRadius = '5px';
-        hint.style.fontSize = '18px';
-        hint.style.fontFamily = 'Arial, sans-serif';
-        hint.style.boxShadow = '0 0 10px rgba(0, 0, 255, 0.5)';
-        hint.style.zIndex = '100';
-        hint.style.animation = 'pulse 2s infinite';
-        
-        // Add pulsing animation
-        const style = document.createElement('style');
-        style.innerHTML = `
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-                100% { transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
-        
-        hint.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="font-size: 24px;">⬇️</div>
-                <div>Walk over the "START NEXT WAVE" text in area B</div>
-            </div>
-        `;
-        
-        document.body.appendChild(hint);
+        // This method is intentionally empty to remove the hint message
     }
     
     removeNextWaveButtonHint() {
@@ -1100,10 +984,7 @@ export class UI {
             this.playerInfoButton.parentNode.removeChild(this.playerInfoButton);
         }
         
-        // Remove turret ability UI
-        if (this.turretAbilityContainer && this.turretAbilityContainer.parentNode) {
-            this.turretAbilityContainer.parentNode.removeChild(this.turretAbilityContainer);
-        }
+        // No need to try removing the turret ability UI since it doesn't exist
         
         // Remove any active notifications
         const notifications = document.querySelectorAll('.wave-notification, .notification');
@@ -1478,5 +1359,78 @@ export class UI {
         }
         
         return slot;
+    }
+    
+    // New function for ability cooldown indicators
+    createAbilityCooldownIndicator(slotElement) {
+        if (!slotElement) return;
+        
+        // Create cooldown overlay
+        const cooldownOverlay = document.createElement('div');
+        cooldownOverlay.style.position = 'absolute';
+        cooldownOverlay.style.top = '0';
+        cooldownOverlay.style.left = '0';
+        cooldownOverlay.style.width = '100%';
+        cooldownOverlay.style.height = '100%';
+        cooldownOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        cooldownOverlay.style.borderRadius = '5px';
+        cooldownOverlay.style.display = 'none';
+        cooldownOverlay.style.zIndex = '2'; // Above the item, below the keybind
+        cooldownOverlay.dataset.isCooldownOverlay = 'true';
+        
+        // Create cooldown text
+        const cooldownText = document.createElement('div');
+        cooldownText.style.position = 'absolute';
+        cooldownText.style.top = '50%';
+        cooldownText.style.left = '50%';
+        cooldownText.style.transform = 'translate(-50%, -50%)';
+        cooldownText.style.color = 'white';
+        cooldownText.style.fontSize = '18px';
+        cooldownText.style.fontWeight = 'bold';
+        cooldownText.style.textShadow = '0 0 3px black';
+        cooldownText.style.zIndex = '3';
+        cooldownText.dataset.isCooldownText = 'true';
+        
+        cooldownOverlay.appendChild(cooldownText);
+        slotElement.appendChild(cooldownOverlay);
+        
+        return { cooldownOverlay, cooldownText };
+    }
+    
+    updateAbilityCooldown(slotElement, remainingSeconds, totalCooldown) {
+        if (!slotElement) return;
+        
+        // Find or create cooldown overlay
+        let cooldownOverlay = slotElement.querySelector('[data-is-cooldown-overlay="true"]');
+        let cooldownText = cooldownOverlay?.querySelector('[data-is-cooldown-text="true"]');
+        
+        if (!cooldownOverlay) {
+            const cooldownElements = this.createAbilityCooldownIndicator(slotElement);
+            cooldownOverlay = cooldownElements.cooldownOverlay;
+            cooldownText = cooldownElements.cooldownText;
+        }
+        
+        // Show cooldown overlay
+        cooldownOverlay.style.display = 'block';
+        
+        // Update cooldown text
+        cooldownText.textContent = `${Math.ceil(remainingSeconds)}`;
+        
+        // Calculate fill percentage (100% at start of cooldown, 0% at end)
+        const percentage = (remainingSeconds / totalCooldown) * 100;
+        
+        // Keep overlay at full size but adjust opacity for visual effect
+        cooldownOverlay.style.opacity = percentage / 100 * 0.8 + 0.2; // Range from 0.2 to 1.0
+    }
+    
+    completeAbilityCooldown(slotElement) {
+        if (!slotElement) return;
+        
+        // Find cooldown overlay
+        const cooldownOverlay = slotElement.querySelector('[data-is-cooldown-overlay="true"]');
+        if (!cooldownOverlay) return;
+        
+        // Hide cooldown overlay
+        cooldownOverlay.style.display = 'none';
     }
 } 

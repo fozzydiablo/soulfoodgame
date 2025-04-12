@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ShopItem } from './ShopItem.js';
 import { ShopUI } from './ShopUI.js';
 
@@ -10,10 +11,10 @@ export class ShopManager {
         this.isShopActive = false;
         this.interactionDistance = 5; // How close player needs to be to interact
         
-        // Three shop buildings positions (in area B)
+        // Three shop buildings positions (in area B) - Adjust consumables shop position
         this.shopPositions = [
             new THREE.Vector3(40, 0, -15),  // North area of area B (Items Shop)
-            new THREE.Vector3(25, 0, -5),   // West area of area B (Consumables Shop)
+            new THREE.Vector3(28, 0, 0),   // West area of area B (Consumables Shop) - Moved east to prevent wall clipping
             new THREE.Vector3(55, 0, -5)    // East area of area B (Abilities Shop)
         ];
         
@@ -929,8 +930,8 @@ export class ShopManager {
         
         // Add E key listener for shop interaction
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'e' || e.key === 'E') {
-                this.onEKeyPressed();
+            if (e.key === 'f' || e.key === 'F') {
+                this.onFKeyPressed();
             }
         });
         
@@ -944,156 +945,110 @@ export class ShopManager {
     createShopBuildings() {
         // For each shop position, create a shop building
         this.shopPositions.forEach((position, index) => {
-            // Shop building dimensions
-            const width = 10;
-            const height = 6;
-            const depth = 8;
+            // Load the appropriate 3D model based on shop type
+            const loader = new GLTFLoader();
+            let modelPath;
+            let modelScale;
             
-            // Foundation height to adjust other elements
-            const baseHeight = 0.5;
-            const baseExtension = 1;
-            const foundationOffset = baseHeight + 0.05; // Base height plus z-fighting prevention offset
-            
-            // Create shop building materials
-            const wallMaterial = this.createWallMaterial();
-            const roofMaterial = new THREE.MeshStandardMaterial({ 
-                color: this.getShopColor(index),
-                roughness: 0.8,
-                metalness: 0.2
-            });
-            
-            // Create main building structure as a solid building (no interior)
-            const buildingGeometry = new THREE.BoxGeometry(width, height, depth);
-            const shopBuilding = new THREE.Mesh(buildingGeometry, wallMaterial);
-            // Adjust building position to sit on top of foundation
-            shopBuilding.position.set(position.x, height / 2 + foundationOffset, position.z);
-            shopBuilding.castShadow = true;
-            shopBuilding.receiveShadow = true;
-            
-            // Add collision to prevent player from entering
-            if (!this.gameManager.colliders) {
-                this.gameManager.colliders = [];
+            // Set appropriate scale for each shop type
+            switch(index) {
+                case 0: // Item Shop
+                    modelPath = 'src/assets/models/Buildings/Item Shop.glb';
+                    modelScale = 7; // Maintain larger scale for item shop
+                    break;
+                case 1: // Consumables Shop
+                    modelPath = 'src/assets/models/Buildings/Consumables Shop.glb';
+                    modelScale = 6.5; // Slightly smaller scale
+                    break;
+                case 2: // Abilities Shop
+                    modelPath = 'src/assets/models/Buildings/Abilities Shop.glb';
+                    modelScale = 5.5; // Reduced scale as it seems too big
+                    break;
             }
-            shopBuilding.userData.isCollidable = true;
-            this.gameManager.colliders.push(shopBuilding);
             
-            this.scene.add(shopBuilding);
-            this.shopBuildings.push(shopBuilding);
-            
-            // Create foundation/base platform
-            const baseGeometry = new THREE.BoxGeometry(
-                width + baseExtension * 2, 
-                baseHeight, 
-                depth + baseExtension * 2
-            );
-            const baseMaterial = new THREE.MeshStandardMaterial({
-                color: 0x555555,
-                roughness: 0.9,
-                metalness: 0.1
-            });
-            const base = new THREE.Mesh(baseGeometry, baseMaterial);
-            // Raise the base slightly above the ground to prevent z-fighting
-            base.position.set(position.x, baseHeight/2 + 0.05, position.z);
-            base.receiveShadow = true;
-            this.scene.add(base);
-            
-            // Create steps to the entrance
-            const stepsWidth = 4;
-            const stepDepth = 0.8;
-            const stepHeight = 0.25;
-            const numSteps = 2;
-            
-            for (let i = 0; i < numSteps; i++) {
-                const stepGeometry = new THREE.BoxGeometry(stepsWidth, stepHeight, stepDepth);
-                const step = new THREE.Mesh(stepGeometry, baseMaterial);
-                step.position.set(
-                    position.x,
-                    stepHeight * i + stepHeight/2 + 0.05, // Raise steps slightly to prevent z-fighting
-                    position.z + depth/2 + baseExtension + stepDepth * (numSteps - i - 0.5)
+            loader.load(modelPath, (gltf) => {
+                const model = gltf.scene;
+                
+                // Scale model
+                model.scale.set(modelScale, modelScale, modelScale);
+                
+                // Position the model
+                model.position.set(position.x, 0, position.z);
+                
+                // Add shadows to all meshes in the model
+                model.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true;
+                        node.receiveShadow = true;
+                    }
+                });
+                
+                // Add to scene
+                this.scene.add(model);
+                this.shopBuildings.push(model);
+                
+                // Add collision to prevent player from entering
+                if (!this.gameManager.colliders) {
+                    this.gameManager.colliders = [];
+                }
+                
+                // Create a simple collision box around the model
+                // Adjust collision box size based on shop type
+                let width, height, depth;
+                
+                if (index === 2) { // Abilities Shop
+                    width = 8;
+                    height = 7;
+                    depth = 8;
+                } else {
+                    width = 10;
+                    height = 8;
+                    depth = 10;
+                }
+                
+                const collisionBox = new THREE.Mesh(
+                    new THREE.BoxGeometry(width, height, depth),
+                    new THREE.MeshBasicMaterial({ visible: false })
                 );
-                step.castShadow = true;
-                step.receiveShadow = true;
-                this.scene.add(step);
-            }
-            
-            // Create roof (pointed/triangular)
-            const roofHeight = 3;
-            const roofGeometry = new THREE.CylinderGeometry(0, width / 2, roofHeight, 4, 1);
-            roofGeometry.rotateY(Math.PI / 4); // Rotate to align with building
-            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-            // Adjust roof position to account for foundation
-            roof.position.set(position.x, height + roofHeight / 2 + foundationOffset, position.z);
-            roof.castShadow = true;
-            this.scene.add(roof);
-            
-            // Create roof edge trim
-            const roofTrimGeometry = new THREE.BoxGeometry(width + 0.5, 0.3, depth + 0.5);
-            const roofTrimMaterial = new THREE.MeshStandardMaterial({
-                color: this.getShopColor(index),
-                roughness: 0.7,
-                metalness: 0.3
+                collisionBox.position.set(position.x, height / 2, position.z);
+                collisionBox.userData.isCollidable = true;
+                this.gameManager.colliders.push(collisionBox);
+                this.scene.add(collisionBox);
+                
+                // Add interaction trigger zone (outside the shop)
+                this.addInteractionZone(position, index, width, depth);
             });
-            const roofTrim = new THREE.Mesh(roofTrimGeometry, roofTrimMaterial);
-            // Adjust trim position to account for foundation
-            roofTrim.position.set(position.x, height + 0.15 + foundationOffset, position.z);
-            roofTrim.castShadow = true;
-            this.scene.add(roofTrim);
-            
-            // Create door (just a visual door that can't be opened)
-            const doorWidth = 2;
-            const doorHeight = 3;
-            const doorGeometry = new THREE.PlaneGeometry(doorWidth, doorHeight);
-            const doorMaterial = this.createDoorMaterial();
-            const door = new THREE.Mesh(doorGeometry, doorMaterial);
-            door.position.set(
-                position.x, 
-                doorHeight / 2 + foundationOffset, // Adjust door height for foundation
-                position.z + depth / 2 + 0.05
-            );
-            door.castShadow = true;
-            this.scene.add(door);
-            
-            // Create door frame
-            this.createDoorFrame(
-                position.x, 
-                doorHeight / 2 + foundationOffset, // Adjust door frame height for foundation
-                position.z + depth / 2 + 0.03,
-                doorWidth,
-                doorHeight
-            );
-            
-            // Create windows
-            this.createWindow(
-                position.x - width / 2 - 0.05, 
-                2 + foundationOffset, // Adjust window height for foundation
-                position.z, 
-                'left'
-            );
-            this.createWindow(
-                position.x + width / 2 + 0.05, 
-                2 + foundationOffset, // Adjust window height for foundation
-                position.z, 
-                'right'
-            );
-            
-            // Add interaction trigger zone (outside the shop)
-            const interactionZone = new THREE.Mesh(
-                new THREE.SphereGeometry(this.interactionDistance),
-                new THREE.MeshBasicMaterial({ 
-                    color: 0x00ff00, 
-                    transparent: true, 
-                    opacity: 0.0 // Invisible
-                })
-            );
-            interactionZone.position.set(
-                position.x,
-                this.interactionDistance / 2,
-                position.z + depth / 2 + 2 // Outside the door
-            );
-            interactionZone.userData = { shopIndex: index, shopType: this.shopTypes[index] };
-            this.scene.add(interactionZone);
-            this.interactionZones.push(interactionZone);
         });
+    }
+    
+    // Helper method to add interaction zone for shops
+    addInteractionZone(position, index, width, depth) {
+        const interactionZone = new THREE.Mesh(
+            new THREE.SphereGeometry(this.interactionDistance),
+            new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00, 
+                transparent: true, 
+                opacity: 0.0 // Invisible
+            })
+        );
+        
+        // Position the interaction zone outside the shop at an appropriate distance
+        let zOffset = depth / 2 + 3; // Default offset
+        
+        // Special adjustment for consumables shop
+        if (index === 1) {
+            zOffset = -5; // Move interaction zone north for consumables shop
+        }
+        
+        interactionZone.position.set(
+            position.x,
+            this.interactionDistance / 2,
+            position.z + zOffset
+        );
+        
+        interactionZone.userData = { shopIndex: index, shopType: this.shopTypes[index] };
+        this.scene.add(interactionZone);
+        this.interactionZones.push(interactionZone);
     }
     
     // Get color for each shop type
@@ -2063,11 +2018,29 @@ export class ShopManager {
             const signMaterial = this.createSignMaterial(index);
             const shopSign = new THREE.Mesh(signGeometry, signMaterial);
             
-            // Position sign above the door
+            // Position signs based on shop type and height - reduced heights by about half
+            let signYPosition;
+            let signZOffset = 0;
+            
+            switch(index) {
+                case 0: // Item Shop
+                    signYPosition = 7; // Reduced from 14
+                    break;
+                case 1: // Consumables Shop
+                    signYPosition = 6.5; // Reduced from 13
+                    signZOffset = -5; // Move sign north to align with the model
+                    break;
+                case 2: // Abilities Shop
+                    signYPosition = 5.5; // Reduced from 11
+                    break;
+                default:
+                    signYPosition = 7;
+            }
+            
             shopSign.position.set(
                 position.x,
-                8, // Above the building
-                position.z + 4 + 0.2 // Slightly in front of building
+                signYPosition,
+                position.z + signZOffset + 6 // Adjust z position based on shop type
             );
             
             shopSign.castShadow = true;
@@ -2202,7 +2175,7 @@ export class ShopManager {
             // Update UI prompt based on proximity
             if (nearShop && nearestShopIndex !== -1) {
                 if (!this.promptVisible || this.currentNearShopIndex !== nearestShopIndex) {
-                    this.gameManager.ui.showNotification(`Press E to enter ${this.shopTypes[nearestShopIndex].toUpperCase()} shop`, 99999);
+                    this.gameManager.ui.showNotification(`Press F to enter ${this.shopTypes[nearestShopIndex].toUpperCase()} shop`, 99999);
                     this.promptVisible = true;
                     this.currentNearShopIndex = nearestShopIndex;
                     // Store current shop type for interaction
@@ -2211,7 +2184,7 @@ export class ShopManager {
             } else if (this.promptVisible) {
                 // Hide any permanent notifications
                 document.querySelectorAll('.game-notification').forEach(el => {
-                    if (el.textContent.includes("Press E to")) {
+                    if (el.textContent.includes("Press F to")) {
                         document.body.removeChild(el);
                     }
                 });
@@ -2220,25 +2193,25 @@ export class ShopManager {
                 this.currentShopType = null;
             }
             
-            // Check if player is near the "Next Wave" button
-            if (this.nextWaveTriggerZone) {
+            // Check if player is near the "Next Wave" button - but don't show F key prompt anymore
+            if (this.nextWaveTriggerZone && this.gameManager.isBetweenWaves) {
                 const distanceToButton = playerPosition.distanceTo(this.nextWaveTriggerZone.position);
                 
-                if (distanceToButton < 4) { // Use a slightly larger distance for the button
-                    if (!this.nearNextWaveButton) {
-                        this.gameManager.ui.showNotification('Press E to start next wave', 99999);
-                        this.nearNextWaveButton = true;
-                    }
-                } else if (this.nearNextWaveButton) {
+                // Check if player is standing on the next wave text
+                if (distanceToButton < 2) { // Closer distance to require standing on the text
+                    // Start the next wave when player walks over the text
+                    this.startNextWave();
+                }
+                
+                // Remove the nearNextWaveButton tracking and F key prompt
+                if (this.nearNextWaveButton) {
                     this.nearNextWaveButton = false;
-                    // Hide if not near a shop and was previously near button
-                    if (!nearShop) {
-                        document.querySelectorAll('.game-notification').forEach(el => {
-                            if (el.textContent.includes("Press E to")) {
-                                document.body.removeChild(el);
-                            }
-                        });
-                    }
+                    // Remove any "Press F to start next wave" notifications
+                    document.querySelectorAll('.game-notification').forEach(el => {
+                        if (el.textContent.includes("start next wave")) {
+                            document.body.removeChild(el);
+                        }
+                    });
                 }
             }
         }
@@ -2359,7 +2332,7 @@ export class ShopManager {
         this.gameManager.ui.showNotification("Starting next wave! Returning to combat area.");
     }
     
-    onEKeyPressed() {
+    onFKeyPressed() {
         // Only respond if player is near any of the interaction zones
         const playerPosition = this.gameManager.hero.mesh.position;
         let nearestShopIndex = -1;

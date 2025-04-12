@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GameManager } from './game/GameManager.js';
 import { StartMenu } from './game/ui/StartMenu.js';
 
