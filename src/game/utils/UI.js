@@ -285,8 +285,9 @@ export class UI {
                     <div style="position: absolute; top: 180px; left: calc(50% - 40px); width: 35px; height: 120px; background-color: #222; border-radius: 10px;"></div>
                     <div style="position: absolute; top: 180px; right: calc(50% - 40px); width: 35px; height: 120px; background-color: #222; border-radius: 10px;"></div>
                     
-                    <!-- Gun -->
-                    <div style="position: absolute; top: 100px; right: calc(50% - 100px); width: 70px; height: 20px; background-color: #666; border-radius: 5px;"></div>
+                    <!-- Bow -->
+                    <div style="position: absolute; top: 100px; right: calc(50% - 110px); width: 80px; height: 15px; background-color: #8B4513; border-radius: 5px; transform: rotate(10deg);"></div>
+                    <div style="position: absolute; top: 95px; right: calc(50% - 105px); width: 1px; height: 20px; background-color: #FFF; border-radius: 5px;"></div>
                 </div>
                 <div style="font-weight: bold; font-size: 24px; margin-top: 20px;">Player Character</div>
             </div>
@@ -580,8 +581,9 @@ export class UI {
                     <div style="position: absolute; top: 180px; left: calc(50% - 40px); width: 35px; height: 120px; background-color: #222; border-radius: 10px;"></div>
                     <div style="position: absolute; top: 180px; right: calc(50% - 40px); width: 35px; height: 120px; background-color: #222; border-radius: 10px;"></div>
                     
-                    <!-- Gun -->
-                    <div style="position: absolute; top: 100px; right: calc(50% - 100px); width: 70px; height: 20px; background-color: #666; border-radius: 5px;"></div>
+                    <!-- Bow -->
+                    <div style="position: absolute; top: 100px; right: calc(50% - 110px); width: 80px; height: 15px; background-color: #8B4513; border-radius: 5px; transform: rotate(10deg);"></div>
+                    <div style="position: absolute; top: 95px; right: calc(50% - 105px); width: 1px; height: 20px; background-color: #FFF; border-radius: 5px;"></div>
                 </div>
                 <div style="font-weight: bold; font-size: 24px; margin-top: 20px;">Player Character</div>
             </div>

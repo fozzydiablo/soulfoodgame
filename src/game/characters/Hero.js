@@ -103,8 +103,8 @@ export class Hero {
         rightLeg.position.set(0.3, -0.6, 0);
         group.add(rightLeg);
         
-        // Add a gun model attached to the right arm
-        this.createGunModel(rightArm);
+        // Add a bow model attached to the right arm
+        this.createBowModel(rightArm);
         
         // Add shadow casting to all parts
         group.traverse((object) => {
@@ -122,33 +122,193 @@ export class Hero {
         this.scene.add(this.mesh);
     }
     
-    createGunModel(armMesh) {
-        // Gun body
-        const gunBody = new THREE.BoxGeometry(0.2, 0.15, 0.6);
-        const gunMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x333333,
-            metalness: 0.8,
+    createBowModel(armMesh) {
+        // Create a more elegant recurve bow as shown in the reference image
+        const bowGroup = new THREE.Group();
+        
+        // Main bow body curve
+        const bowCurve = new THREE.CubicBezierCurve3(
+            new THREE.Vector3(0, -0.3, 0),        // Bottom tip
+            new THREE.Vector3(-0.2, -0.1, 0),     // Bottom control point
+            new THREE.Vector3(-0.2, 0.1, 0),      // Top control point
+            new THREE.Vector3(0, 0.3, 0)          // Top tip
+        );
+        
+        // Create the bow body using extruded shape
+        const bowPoints = bowCurve.getPoints(20);
+        
+        // Create a path for extrusion
+        const bowShape = new THREE.Shape();
+        bowShape.moveTo(0, -0.02);
+        bowShape.lineTo(0.03, 0);
+        bowShape.lineTo(0, 0.02);
+        bowShape.lineTo(-0.03, 0);
+        bowShape.lineTo(0, -0.02);
+        
+        // Create path for the bow's curve
+        const bowPath = new THREE.CatmullRomCurve3(bowPoints);
+        
+        // Extrude settings for a more detailed bow
+        const extrudeSettings = {
+            steps: 20,
+            bevelEnabled: true,
+            bevelThickness: 0.01,
+            bevelSize: 0.01,
+            bevelSegments: 5,
+            extrudePath: bowPath
+        };
+        
+        const bowGeometry = new THREE.ExtrudeGeometry(bowShape, extrudeSettings);
+        
+        // Dark wood material for the bow body
+        const bowMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4A2511,  // Darker brown for wooden bow
+            roughness: 0.7,
+            metalness: 0.1
+        });
+        
+        // Create the main bow body
+        const bowBody = new THREE.Mesh(bowGeometry, bowMaterial);
+        bowGroup.add(bowBody);
+        
+        // Add recurve tips at the ends (the curved parts at the ends of the bow)
+        const tipGeometry = new THREE.TorusGeometry(0.05, 0.01, 8, 8, Math.PI);
+        const upperTip = new THREE.Mesh(tipGeometry, bowMaterial);
+        upperTip.position.set(0, 0.3, 0);
+        upperTip.rotation.x = Math.PI / 2;
+        bowGroup.add(upperTip);
+        
+        const lowerTip = new THREE.Mesh(tipGeometry, bowMaterial);
+        lowerTip.position.set(0, -0.3, 0);
+        lowerTip.rotation.x = -Math.PI / 2;
+        bowGroup.add(lowerTip);
+        
+        // Bowstring - thinner and taut
+        const stringGeometry = new THREE.CylinderGeometry(0.003, 0.003, 0.62, 4);
+        const stringMaterial = new THREE.MeshStandardMaterial({
+            color: 0xF0F0F0,
+            roughness: 0.3,
+            metalness: 0.2
+        });
+        
+        const bowstring = new THREE.Mesh(stringGeometry, stringMaterial);
+        bowstring.position.z = 0.03;
+        bowGroup.add(bowstring);
+        
+        // Add bow grip wrapping in the middle
+        const gripGeometry = new THREE.CylinderGeometry(0.025, 0.025, 0.1, 8);
+        const gripMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1E1E1E,  // Dark leather color
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        
+        const grip = new THREE.Mesh(gripGeometry, gripMaterial);
+        grip.rotation.x = Math.PI / 2;
+        grip.position.z = -0.02;
+        bowGroup.add(grip);
+        
+        // Rotate and position the entire bow
+        bowGroup.rotation.y = Math.PI / 2;
+        bowGroup.rotation.z = -Math.PI / 10; // Slightly angled
+        bowGroup.position.set(0, -0.1, 0.3);
+        
+        // Create and add arrow model
+        this.createArrowModel();
+        this.arrow.position.z = 0.02;
+        bowGroup.add(this.arrow);
+        
+        // Set the bow reference and add to arm
+        this.bow = bowGroup;
+        armMesh.add(this.bow);
+    }
+    
+    createArrowModel() {
+        const arrowGroup = new THREE.Group();
+        
+        // Arrow shaft - thinner and longer
+        const shaftGeometry = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 8);
+        const shaftMaterial = new THREE.MeshStandardMaterial({
+            color: 0xB5A642,  // Light wooden color for shaft
+            roughness: 0.5,
+            metalness: 0.1
+        });
+        
+        const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+        shaft.rotation.z = Math.PI / 2;
+        arrowGroup.add(shaft);
+        
+        // Arrow head - sharper and more defined
+        const headGeometry = new THREE.ConeGeometry(0.02, 0.08, 8);
+        const headMaterial = new THREE.MeshStandardMaterial({
+            color: 0x666666,  // Steel gray for arrowhead
+            metalness: 0.9,
             roughness: 0.2
         });
         
-        this.gun = new THREE.Mesh(gunBody, gunMaterial);
-        this.gun.position.set(0, -0.3, 0.3);
-        this.gun.rotation.x = Math.PI / 2;
+        const arrowHead = new THREE.Mesh(headGeometry, headMaterial);
+        arrowHead.rotation.z = -Math.PI / 2;
+        arrowHead.position.x = 0.33;
+        arrowGroup.add(arrowHead);
         
-        // Gun barrel
-        const barrelGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8);
-        const barrelMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x666666,
-            metalness: 0.9,
-            roughness: 0.1
+        // Arrow fletching (feathers) - more detailed
+        // Create a custom shape for the feathers
+        const featherShape = new THREE.Shape();
+        featherShape.moveTo(0, 0);
+        featherShape.lineTo(0.08, 0.005);
+        featherShape.lineTo(0.12, 0.04);
+        featherShape.lineTo(0.08, 0.08);
+        featherShape.lineTo(0, 0.1);
+        featherShape.lineTo(0, 0);
+        
+        const featherExtrudeSettings = {
+            steps: 1,
+            depth: 0.003,
+            bevelEnabled: false
+        };
+        
+        const featherGeometry = new THREE.ExtrudeGeometry(featherShape, featherExtrudeSettings);
+        
+        // Create three feathers spaced equally around the shaft
+        const featherMaterial1 = new THREE.MeshStandardMaterial({ color: 0xDD2222 }); // Red
+        const featherMaterial2 = new THREE.MeshStandardMaterial({ color: 0x2222DD }); // Blue
+        const featherMaterial3 = new THREE.MeshStandardMaterial({ color: 0x22DD22 }); // Green
+        
+        // First feather (red) - top
+        const feather1 = new THREE.Mesh(featherGeometry, featherMaterial1);
+        feather1.position.set(-0.25, 0.01, 0);
+        feather1.rotation.z = Math.PI / 2;
+        arrowGroup.add(feather1);
+        
+        // Second feather (blue) - right side
+        const feather2 = new THREE.Mesh(featherGeometry, featherMaterial2);
+        feather2.position.set(-0.25, 0, 0.01);
+        feather2.rotation.set(0, -Math.PI/2, -Math.PI/2);
+        arrowGroup.add(feather2);
+        
+        // Third feather (green) - left side
+        const feather3 = new THREE.Mesh(featherGeometry, featherMaterial3);
+        feather3.position.set(-0.25, 0, -0.01);
+        feather3.rotation.set(0, Math.PI/2, -Math.PI/2);
+        arrowGroup.add(feather3);
+        
+        // Add a small nock at the end of the arrow
+        const nockGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.02, 8);
+        const nockMaterial = new THREE.MeshStandardMaterial({
+            color: 0x222222,
+            metalness: 0.5,
+            roughness: 0.5
         });
         
-        const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-        barrel.rotation.x = Math.PI / 2;
-        barrel.position.set(0, 0, 0.4);
-        this.gun.add(barrel);
+        const nock = new THREE.Mesh(nockGeometry, nockMaterial);
+        nock.rotation.z = Math.PI / 2;
+        nock.position.x = -0.31;
+        arrowGroup.add(nock);
         
-        armMesh.add(this.gun);
+        // Initially hide the arrow - will be shown during shooting
+        arrowGroup.visible = false;
+        
+        this.arrow = arrowGroup;
     }
     
     setupControls() {
@@ -254,10 +414,10 @@ export class Hero {
         if (this.gameManager.useAmmo()) {
             console.log('Shooting!');
             
-            // Get the gun barrel position
+            // Get the bow position
             const position = new THREE.Vector3();
             const rightArm = this.mesh.children[3];
-            this.gun.getWorldPosition(position);
+            this.bow.getWorldPosition(position);
             
             // Get direction where the character is facing
             // Create a forward vector in the direction the character is looking
@@ -273,25 +433,57 @@ export class Hero {
             // Play shoot animation
             this.playShootAnimation();
         } else {
-            console.log('Out of ammo!');
+            console.log('Out of arrows!');
             // Could play a "click" sound here
         }
     }
     
     playShootAnimation() {
-        // Simple recoil animation for the gun
+        // Set animation state to shooting
+        this.animationState = 'shooting';
+        
+        // Show the arrow when drawing the bow
+        this.arrow.visible = true;
+        
+        // Get the arm for animation
+        const leftArm = this.mesh.children[2];
         const rightArm = this.mesh.children[3];
         
-        // Reset previous animations
-        rightArm.rotation.x = 0;
+        // Animate bow string tension
+        // Find the bowstring in the bow group
+        let bowstring = null;
+        this.bow.traverse((child) => {
+            if (child instanceof THREE.Mesh && 
+                child.material && 
+                child.material.color && 
+                child.material.color.getHexString() === 'f0f0f0') {
+                bowstring = child;
+            }
+        });
         
-        // Apply recoil
-        rightArm.rotation.x = -0.3;
+        // Draw the bow animation
+        if (bowstring) {
+            // Tense the bowstring by scaling it shorter
+            bowstring.scale.y = 0.9;
+            
+            // Slightly bend the bow by rotating the bow group
+            this.bow.rotation.z -= 0.1;
+        }
         
-        // Return to original position after a short delay
+        // After a short delay, release the arrow and return to original position
         setTimeout(() => {
-            rightArm.rotation.x = 0;
-        }, 150);
+            // Hide the arrow (it's been fired)
+            this.arrow.visible = false;
+            
+            // Return bowstring to normal
+            if (bowstring) {
+                bowstring.scale.y = 1.0;
+                this.bow.rotation.z += 0.1;
+            }
+            
+            // Return to idle animation after arrow release
+            this.animationState = 'idle';
+        }, 200);
     }
     
     canShoot() {
@@ -375,6 +567,23 @@ export class Hero {
             rightArm.rotation.x = -0.5;
             leftLeg.rotation.x = 0.5;
             rightLeg.rotation.x = 0.5;
+        }
+        else if (this.animationState === 'shooting') {
+            // Shooting animation - archery stance
+            leftArm.rotation.x = -0.8;  // Left arm extended forward holding the bow
+            rightArm.rotation.x = -1.0; // Right arm pulled back further to draw the bowstring
+            leftLeg.rotation.x = 0.2;   // Slight stance with left leg forward
+            rightLeg.rotation.x = -0.2; // Right leg back for stability
+            
+            // Slightly rotate upper body for archer stance
+            if (!this.shooting_rotation) {
+                this.mesh.rotation.y += 0.2;
+                this.shooting_rotation = true;
+            }
+        } else if (this.shooting_rotation) {
+            // Reset rotation when not shooting
+            this.mesh.rotation.y -= 0.2;
+            this.shooting_rotation = false;
         }
     }
     

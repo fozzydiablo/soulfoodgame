@@ -14,17 +14,31 @@ export class ShopManager {
         // Three shop buildings positions (in area B) - Adjust consumables shop position
         this.shopPositions = [
             new THREE.Vector3(40, 0, -15),  // North area of area B (Items Shop)
-            new THREE.Vector3(28, 0, 0),   // West area of area B (Consumables Shop) - Moved east to prevent wall clipping
+            new THREE.Vector3(32, 0, -5),   // West area of area B (Consumables Shop) - Moved east and north
             new THREE.Vector3(55, 0, -5)    // East area of area B (Abilities Shop)
+        ];
+        
+        // Store rotation values for shops (in radians) - default is 0, consumables shop rotated 45 degrees counter-clockwise
+        this.shopRotations = [
+            0,  // Items Shop - no rotation
+            Math.PI / 4,  // Consumables Shop - 45 degrees counter-clockwise
+            0   // Abilities Shop - no rotation
         ];
         
         this.shopTypes = ['items', 'consumables', 'abilities'];
         this.currentShopType = null;
         this.shopBuildings = [];
         this.interactionZones = [];
+        this.signPositions = [];
         
         // Create shop buildings
         this.createShopBuildings();
+        
+        // Create shop signs
+        this.createShopSigns();
+        
+        // Create interaction zones after signs are created
+        this.createInteractionZones();
         
         // Create shop UI (but don't show it yet)
         this.shopUI = new ShopUI(this.gameManager);
@@ -958,7 +972,7 @@ export class ShopManager {
                     break;
                 case 1: // Consumables Shop
                     modelPath = 'src/assets/models/Buildings/Consumables Shop.glb';
-                    modelScale = 6.5; // Slightly smaller scale
+                    modelScale = 7.8; // 20% larger than original 6.5 scale
                     break;
                 case 2: // Abilities Shop
                     modelPath = 'src/assets/models/Buildings/Abilities Shop.glb';
@@ -974,6 +988,11 @@ export class ShopManager {
                 
                 // Position the model
                 model.position.set(position.x, 0, position.z);
+                
+                // Apply rotation if specified
+                if (this.shopRotations[index] !== 0) {
+                    model.rotation.y = this.shopRotations[index];
+                }
                 
                 // Add shadows to all meshes in the model
                 model.traverse((node) => {
@@ -1000,6 +1019,10 @@ export class ShopManager {
                     width = 8;
                     height = 7;
                     depth = 8;
+                } else if (index === 1) { // Consumables Shop
+                    width = 12; // 20% bigger than default
+                    height = 9.6; // 20% bigger than default
+                    depth = 12; // 20% bigger than default
                 } else {
                     width = 10;
                     height = 8;
@@ -1011,18 +1034,35 @@ export class ShopManager {
                     new THREE.MeshBasicMaterial({ visible: false })
                 );
                 collisionBox.position.set(position.x, height / 2, position.z);
+                
+                // Apply same rotation to collision box for consumables shop
+                if (index === 1) {
+                    collisionBox.rotation.y = this.shopRotations[index];
+                }
+                
                 collisionBox.userData.isCollidable = true;
                 this.gameManager.colliders.push(collisionBox);
                 this.scene.add(collisionBox);
-                
-                // Add interaction trigger zone (outside the shop)
-                this.addInteractionZone(position, index, width, depth);
             });
         });
     }
     
+    // Create interaction zones at the same positions as shop signs
+    createInteractionZones() {
+        // Make sure shop signs have been created
+        if (!this.signPositions || this.signPositions.length === 0) {
+            console.error("Cannot create interaction zones: shop signs not created yet");
+            return;
+        }
+        
+        // Create an interaction zone for each shop sign
+        for (let i = 0; i < this.signPositions.length; i++) {
+            this.addInteractionZone(i);
+        }
+    }
+    
     // Helper method to add interaction zone for shops
-    addInteractionZone(position, index, width, depth) {
+    addInteractionZone(index) {
         const interactionZone = new THREE.Mesh(
             new THREE.SphereGeometry(this.interactionDistance),
             new THREE.MeshBasicMaterial({ 
@@ -1032,18 +1072,11 @@ export class ShopManager {
             })
         );
         
-        // Position the interaction zone outside the shop at an appropriate distance
-        let zOffset = depth / 2 + 3; // Default offset
-        
-        // Special adjustment for consumables shop
-        if (index === 1) {
-            zOffset = -5; // Move interaction zone north for consumables shop
-        }
-        
+        // Position the interaction zone at the same x,z as the sign, but at a lower y-position
         interactionZone.position.set(
-            position.x,
-            this.interactionDistance / 2,
-            position.z + zOffset
+            this.signPositions[index].x,
+            this.interactionDistance / 2, // Keep at appropriate height for interaction
+            this.signPositions[index].z
         );
         
         interactionZone.userData = { shopIndex: index, shopType: this.shopTypes[index] };
@@ -2028,7 +2061,7 @@ export class ShopManager {
                     break;
                 case 1: // Consumables Shop
                     signYPosition = 6.5; // Reduced from 13
-                    signZOffset = -5; // Move sign north to align with the model
+                    signZOffset = 0; // Align with new shop position
                     break;
                 case 2: // Abilities Shop
                     signYPosition = 5.5; // Reduced from 11
@@ -2037,11 +2070,21 @@ export class ShopManager {
                     signYPosition = 7;
             }
             
+            // Calculate the sign position
+            const signXPosition = position.x;
+            const signZPosition = position.z + signZOffset + 6; // Adjust z position based on shop type
+            
             shopSign.position.set(
-                position.x,
+                signXPosition,
                 signYPosition,
-                position.z + signZOffset + 6 // Adjust z position based on shop type
+                signZPosition
             );
+            
+            // Store the sign position for later use with interaction zones
+            if (!this.signPositions) {
+                this.signPositions = [];
+            }
+            this.signPositions.push(new THREE.Vector3(signXPosition, 0, signZPosition));
             
             shopSign.castShadow = true;
             this.scene.add(shopSign);
@@ -2074,7 +2117,14 @@ export class ShopManager {
         // Add text based on shop type
         const shopNames = ['ITEMS', 'CONSUMABLES', 'ABILITIES'];
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 100px Arial';
+        
+        // Adjust font size for each sign - smaller font for CONSUMABLES
+        let fontSize = 100;
+        if (shopIndex === 1) { // Consumables shop
+            fontSize = 60; // Smaller font for consumables which is a longer word
+        }
+        
+        ctx.font = `bold ${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(shopNames[shopIndex], canvas.width / 2, canvas.height / 2);

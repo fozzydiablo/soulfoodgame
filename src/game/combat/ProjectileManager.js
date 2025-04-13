@@ -79,19 +79,104 @@ class Projectile {
     }
     
     createMesh(position, color) {
-        // Create bullet shape
-        const geometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
-        geometry.rotateX(Math.PI / 2); // Align with z-axis
+        if (this.isPlayerProjectile) {
+            // Create a detailed arrow projectile to match the hero's bow
+            this.mesh = new THREE.Group();
+            
+            // Arrow shaft - thinner and longer
+            const shaftGeometry = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 8);
+            const shaftMaterial = new THREE.MeshStandardMaterial({
+                color: 0xB5A642,  // Light wooden color
+                roughness: 0.5,
+                metalness: 0.1
+            });
+            
+            const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+            shaft.rotation.x = Math.PI / 2;
+            this.mesh.add(shaft);
+            
+            // Arrow head - sharper and more defined
+            const headGeometry = new THREE.ConeGeometry(0.02, 0.08, 8);
+            const headMaterial = new THREE.MeshStandardMaterial({
+                color: 0x666666,  // Steel gray for arrowhead
+                metalness: 0.9,
+                roughness: 0.2
+            });
+            
+            const arrowHead = new THREE.Mesh(headGeometry, headMaterial);
+            arrowHead.rotation.x = -Math.PI / 2;
+            arrowHead.position.z = 0.33;
+            this.mesh.add(arrowHead);
+            
+            // Arrow fletching (feathers) - more detailed
+            // Create a custom shape for the feathers
+            const featherShape = new THREE.Shape();
+            featherShape.moveTo(0, 0);
+            featherShape.lineTo(0.08, 0.005);
+            featherShape.lineTo(0.12, 0.04);
+            featherShape.lineTo(0.08, 0.08);
+            featherShape.lineTo(0, 0.1);
+            featherShape.lineTo(0, 0);
+            
+            const featherExtrudeSettings = {
+                steps: 1,
+                depth: 0.003,
+                bevelEnabled: false
+            };
+            
+            const featherGeometry = new THREE.ExtrudeGeometry(featherShape, featherExtrudeSettings);
+            
+            // Create three feathers spaced equally around the shaft
+            const featherMaterial1 = new THREE.MeshStandardMaterial({ color: 0xDD2222 }); // Red
+            const featherMaterial2 = new THREE.MeshStandardMaterial({ color: 0x2222DD }); // Blue
+            const featherMaterial3 = new THREE.MeshStandardMaterial({ color: 0x22DD22 }); // Green
+            
+            // First feather (red) - top
+            const feather1 = new THREE.Mesh(featherGeometry, featherMaterial1);
+            feather1.position.set(0, 0.01, -0.25);
+            feather1.rotation.x = -Math.PI / 2;
+            this.mesh.add(feather1);
+            
+            // Second feather (blue) - right side
+            const feather2 = new THREE.Mesh(featherGeometry, featherMaterial2);
+            feather2.position.set(0.01, 0, -0.25);
+            feather2.rotation.set(0, 0, Math.PI/2);
+            this.mesh.add(feather2);
+            
+            // Third feather (green) - left side
+            const feather3 = new THREE.Mesh(featherGeometry, featherMaterial3);
+            feather3.position.set(-0.01, 0, -0.25);
+            feather3.rotation.set(0, 0, -Math.PI/2);
+            this.mesh.add(feather3);
+            
+            // Add a small nock at the end of the arrow
+            const nockGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.02, 8);
+            const nockMaterial = new THREE.MeshStandardMaterial({
+                color: 0x222222,
+                metalness: 0.5,
+                roughness: 0.5
+            });
+            
+            const nock = new THREE.Mesh(nockGeometry, nockMaterial);
+            nock.rotation.x = Math.PI / 2;
+            nock.position.z = -0.31;
+            this.mesh.add(nock);
+        } else {
+            // For enemy projectiles, keep the original design or modify as needed
+            const geometry = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
+            geometry.rotateX(Math.PI / 2); // Align with z-axis
+            
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                emissive: color,
+                emissiveIntensity: 0.5,
+                metalness: 0.7,
+                roughness: 0.3
+            });
+            
+            this.mesh = new THREE.Mesh(geometry, material);
+        }
         
-        const material = new THREE.MeshStandardMaterial({
-            color: color,
-            emissive: color,
-            emissiveIntensity: 0.5,
-            metalness: 0.7,
-            roughness: 0.3
-        });
-        
-        this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.position.copy(position);
         
         // Rotate to face direction
@@ -143,25 +228,44 @@ class Projectile {
         if (now - this.lastTrailTime > 50) {
             this.lastTrailTime = now;
             
-            const geometry = new THREE.SphereGeometry(0.05, 8, 8);
-            const material = new THREE.MeshBasicMaterial({
-                color: this.isPlayerProjectile ? 0x0000FF : 0xFF0000,
-                transparent: true,
-                opacity: 0.7
-            });
-            
-            // Customize trail for special projectiles
-            if (this.areaEffect && this.isPlayerProjectile) {
-                material.color.set(0xff6600); // Fireball trail
+            if (this.isPlayerProjectile) {
+                // Arrow trail - smaller, more subtle particles
+                const geometry = new THREE.SphereGeometry(0.02, 8, 8);
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0xFFFFFF, // White trail for arrows
+                    transparent: true,
+                    opacity: 0.5
+                });
+                
+                const particle = new THREE.Mesh(geometry, material);
+                particle.position.copy(this.mesh.position);
+                particle.scale.set(1, 1, 1);
+                particle.userData.creationTime = now;
+                
+                this.scene.add(particle);
+                this.trailParticles.push(particle);
+            } else {
+                // Original enemy projectile trail
+                const geometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const material = new THREE.MeshBasicMaterial({
+                    color: 0xFF0000, // Red for enemy projectiles
+                    transparent: true,
+                    opacity: 0.7
+                });
+                
+                // Customize trail for special projectiles
+                if (this.areaEffect && this.isPlayerProjectile) {
+                    material.color.set(0xff6600); // Fireball trail
+                }
+                
+                const particle = new THREE.Mesh(geometry, material);
+                particle.position.copy(this.mesh.position);
+                particle.scale.set(1, 1, 1);
+                particle.userData.creationTime = now;
+                
+                this.scene.add(particle);
+                this.trailParticles.push(particle);
             }
-            
-            const particle = new THREE.Mesh(geometry, material);
-            particle.position.copy(this.mesh.position);
-            particle.scale.set(1, 1, 1);
-            particle.userData.creationTime = now;
-            
-            this.scene.add(particle);
-            this.trailParticles.push(particle);
         }
         
         // Update existing trail particles
